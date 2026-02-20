@@ -19,6 +19,7 @@ namespace EmilsWork.EmilsCMS
 
         // Global data
         RepositoryOuvrages ouvrages = null!; // Liste des ouvrages
+        SettingsRepository? settingsRepo;
 
         // Expose repository to user apps
         public RepositoryOuvrages Ouvrages => ouvrages;
@@ -129,29 +130,33 @@ namespace EmilsWork.EmilsCMS
         /// </summary>
         public void SettingsMenu()
         {
-            Helpers.ClearConsole();
-            Console.WriteLine("=== PARAMETRES ===");
-            Console.WriteLine("Aucun paramètre modifiable pour l'instant.");
-            Console.WriteLine("Appuyez sur Entrée pour revenir...");
-            Console.ReadLine();
-            MainMenu();
-        }
+            // Use the UI component abstraction to show editable settings
+            List<SettingsComponent.SettingEntry> entries =
+            [
+                new SettingsComponent.SettingEntry(
+                    "MongoDB password",
+                    () => Globals.Settings.MongoDbPassword ?? string.Empty,
+                    v => Globals.Settings.MongoDbPassword = string.IsNullOrWhiteSpace(v) ? null : v
+                )
+            ];
 
-        // Rest of methods kept as in original core file (Load/Save, InitializeMongoDBRepository, ProcessMenuInput, etc.)
+            var comp = new SettingsComponent(entries, onFinish: () => { SaveSettings(); MainMenu(); });
+            comp.Run();
+        }
 
         void LoadSettings()
         {
             try
             {
-                if (File.Exists(Globals.SettingsFile))
+                // Use a simple JsonFileService + SettingsRepository so settings persistence is centralized
+                var svc = new JsonFileService<AppSettings>(Globals.SettingsFile);
+                settingsRepo = new SettingsRepository(svc);
+                settingsRepo.Load();
+
+                if (settingsRepo.Items.Count > 0)
                 {
-                    string json = File.ReadAllText(Globals.SettingsFile);
-                    AppSettings? loaded = JsonConvert.DeserializeObject<AppSettings>(json);
-                    if (loaded != null)
-                    {
-                        Globals.Settings = ApplyDefaults(loaded);
-                        Console.WriteLine($"[OK] Paramètres chargés ({Globals.SettingsFile})");
-                    }
+                    Globals.Settings = ApplyDefaults(settingsRepo.GetSettingsOrDefault());
+                    Console.WriteLine($"[OK] Paramètres chargés ({Globals.SettingsFile})");
                 }
                 else
                 {
@@ -171,8 +176,15 @@ namespace EmilsWork.EmilsCMS
             try
             {
                 Globals.Settings = ApplyDefaults(Globals.Settings);
-                string json = JsonConvert.SerializeObject(Globals.Settings, Formatting.Indented);
-                File.WriteAllText(Globals.SettingsFile, json);
+
+                // Ensure repository exists
+                if (settingsRepo == null)
+                {
+                    var svc = new JsonFileService<AppSettings>(Globals.SettingsFile);
+                    settingsRepo = new SettingsRepository(svc);
+                }
+
+                settingsRepo.SaveSingle(Globals.Settings);
                 Console.WriteLine($"[OK] Paramètres sauvegardés ({Globals.SettingsFile})");
             }
             catch (Exception ex)

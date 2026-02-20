@@ -16,8 +16,8 @@ namespace EmilsWork.EmilsCMS
         /// </remarks>
         public static void ClearConsole()
         {
-            Console.Clear();
             Console.WriteLine("\x1b[3J");
+            Console.Clear();
         }
 
         /// <summary>

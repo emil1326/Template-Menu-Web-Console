@@ -1,44 +1,45 @@
+using System;
+using System.Collections.Generic;
+
 namespace EmilsWork.EmilsCMS
 {
-    public class MenuChar
+    /// <summary>
+    /// User-side MenuChar implemented as a UIComponent (render + logic).
+    /// Compatible with existing usage via the instance method `ProcessMenuInput()`.
+    /// </summary>
+    public class MenuChar : UIComponent
     {
-        public List<string> MenuNames { get; set; } = new List<string>();
-        public List<char> Chars { get; set; } = new List<char>();
-        public List<Action> Actions { get; set; } = new List<Action>();
-        public Action? OnError { get; set; }
+        public List<string> MenuNames { get; set; } = [];
+        public List<char> Chars { get; set; } = [];
+        public List<Action> Actions { get; set; } = [];
+        public Action OnError { get; set; }
 
-        public MenuChar() { }
-
-        public MenuChar(List<string> menuNames, List<char> chars, List<Action> actions, Action? onError = null)
+        public MenuChar(List<string> menuNames, List<char> chars, List<Action> actions, Action onError)
         {
-            MenuNames = menuNames ?? new List<string>();
-            Chars = chars ?? new List<char>();
-            Actions = actions ?? new List<Action>();
+            MenuNames = menuNames ?? [];
+            Chars = chars ?? [];
+            Actions = actions ?? [];
             OnError = onError;
         }
 
-        /// <summary>
-        /// Affiche le menu et traite l'entrée utilisateur
-        /// </summary>
-        /// <param name="menu">Configuration du menu à afficher</param>
-        public void ProcessMenuInput()
+        public override void Render()
         {
-            // Affiche toutes les lignes du menu
-            foreach (string line in MenuNames)
+            foreach (var line in MenuNames)
             {
                 Console.WriteLine(line);
             }
+        }
 
-            // Attend une touche et la convertit en minuscule
+        public override void ProcessInput()
+        {
             char input = char.ToLower(Console.ReadKey(true).KeyChar);
             Console.WriteLine();
 
-            // Cherche l'action correspondante
             for (int i = 0; i < Chars.Count; i++)
             {
                 if (Chars[i] == input)
                 {
-                    Actions[i]();
+                    Actions[i]?.Invoke();
                     return;
                 }
             }
@@ -48,11 +49,14 @@ namespace EmilsWork.EmilsCMS
                 OnError();
                 return;
             }
-            else
-            {
-                Console.WriteLine("[WARN] Invalid menu input.");
-                return;
-            }
+
+            Console.WriteLine("[WARN] Invalid menu input.");
         }
+
+        /// <summary>
+        /// Backwards-compatible entry used throughout the user app.
+        /// </summary>
+        [Obsolete("This method is deprecated and will be removed in a future version. Use the Run() method instead.")]
+        public void ProcessMenuInput() => Run();
     }
 }

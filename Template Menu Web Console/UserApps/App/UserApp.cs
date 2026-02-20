@@ -53,8 +53,9 @@ internal class UserApp
                 () => core.SettingsMenu(),
                 () => core.ShowInfo(),
                 () => CMSCore.ExitApp()
-            ]
-        ).ProcessMenuInput();
+            ],
+            () => { core.MainMenu(true); }
+        ).Run();
     }
 
     // =================================================================
@@ -91,7 +92,7 @@ internal class UserApp
                 () => core.MainMenu()
             ],
             () => { ListAll(); }
-        ).ProcessMenuInput();
+        ).Run();
     }
 
     void SearchByType()
@@ -118,7 +119,7 @@ internal class UserApp
                 () => ListAll()
             ],
             () => { SearchByType(); }
-        ).ProcessMenuInput();
+        ).Run();
     }
 
     void ShowItemsByType<T>() where T : Ouvrage
@@ -315,7 +316,7 @@ internal class UserApp
                 () => { AddSub(new Periodique(){ Titre = titre, Dispo = dispo, Prix = prix }); }
             ],
             () => { CreateOuvrage(); }
-        ).ProcessMenuInput();
+        ).Run();
     }
 
     void AddSub(Ouvrage BaseOuvrage)
