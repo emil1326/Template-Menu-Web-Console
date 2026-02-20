@@ -130,18 +130,108 @@ namespace EmilsWork.EmilsCMS
         /// </summary>
         public void SettingsMenu()
         {
-            // Use the UI component abstraction to show editable settings
-            List<SettingsComponent.SettingEntry> entries =
-            [
+            // Use the UI component abstraction to show editable settings grouped under a MongoDB category
+            var entries = new List<SettingsComponent.SettingEntry>
+            {
+                // Category header
+                new SettingsComponent.SettingEntry("=== MongoDB Settings ===", () => string.Empty, _ => { }),
+
                 new SettingsComponent.SettingEntry(
-                    "MongoDB password",
+                    "Enabled (true/false)",
+                    () => Globals.Settings.MongoEnabled.ToString(),
+                    v => Globals.Settings.MongoEnabled = bool.TryParse(v, out var b) ? b : Globals.Settings.MongoEnabled
+                ),
+
+                new SettingsComponent.SettingEntry(
+                    "Host",
+                    () => Globals.Settings.MongoHost ?? string.Empty,
+                    v => Globals.Settings.MongoHost = string.IsNullOrWhiteSpace(v) ? null : v
+                ),
+
+                new SettingsComponent.SettingEntry(
+                    "Port",
+                    () => Globals.Settings.MongoPort.ToString(),
+                    v => { if (int.TryParse(v, out var p)) Globals.Settings.MongoPort = p; }
+                ),
+
+                new SettingsComponent.SettingEntry(
+                    "User",
+                    () => Globals.Settings.MongoUser ?? string.Empty,
+                    v => Globals.Settings.MongoUser = string.IsNullOrWhiteSpace(v) ? null : v
+                ),
+
+                new SettingsComponent.SettingEntry(
+                    "Password",
                     () => Globals.Settings.MongoDbPassword ?? string.Empty,
                     v => Globals.Settings.MongoDbPassword = string.IsNullOrWhiteSpace(v) ? null : v
+                ),
+
+                new SettingsComponent.SettingEntry(
+                    "Database",
+                    () => Globals.Settings.MongoDatabase ?? string.Empty,
+                    v => Globals.Settings.MongoDatabase = string.IsNullOrWhiteSpace(v) ? null : v
+                ),
+
+                new SettingsComponent.SettingEntry(
+                    "Collection",
+                    () => Globals.Settings.MongoCollection ?? string.Empty,
+                    v => Globals.Settings.MongoCollection = string.IsNullOrWhiteSpace(v) ? null : v
+                ),
+
+                // Test connection action (user enters anything to trigger)
+                new SettingsComponent.SettingEntry(
+                    "[ACTION] Test MongoDB connection (press any key then Enter)",
+                    () => string.Empty,
+                    _ => { TestMongoConnection(); }
                 )
-            ];
+            };
 
             var comp = new SettingsComponent(entries, onFinish: () => { SaveSettings(); MainMenu(); });
             comp.Run();
+        }
+
+        void TestMongoConnection()
+        {
+            Helpers.ClearConsole();
+            Console.WriteLine("=== TEST MONGODB CONNECTION ===");
+            Console.WriteLine();
+
+            if (!Globals.Settings.MongoEnabled)
+            {
+                Console.WriteLine("MongoDB is disabled in settings.");
+                Console.WriteLine("Press Enter to return to settings...");
+                Console.ReadLine();
+                SettingsMenu();
+                return;
+            }
+
+            try
+            {
+                var s = new MongoDBServiceSettings
+                {
+                    AppName = Globals.AppName,
+                    User = Globals.Settings.MongoUser ?? string.Empty,
+                    Host = Globals.Settings.MongoHost ?? string.Empty,
+                    Password = Globals.Settings.MongoDbPassword ?? string.Empty,
+                    DatabaseName = Globals.Settings.MongoDatabase ?? string.Empty,
+                    CollectionName = Globals.Settings.MongoCollection ?? string.Empty
+                };
+
+                // Attempt to create the service and fetch zero or more items as a connectivity test
+                var svc = new MongoDBService<Ouvrage>(s, ConfigureOuvrageBsonMaps);
+                var items = svc.GetAll();
+                Console.WriteLine("[OK] MongoDB service instantiated successfully.");
+                Console.WriteLine($"Items fetched: {items?.Count ?? 0}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ERROR] Connection test failed: {ex.Message}");
+            }
+
+            Console.WriteLine();
+            Console.WriteLine("Press Enter to return to settings...");
+            Console.ReadLine();
+            SettingsMenu();
         }
 
         void LoadSettings()
@@ -208,16 +298,29 @@ namespace EmilsWork.EmilsCMS
 
             if (string.IsNullOrWhiteSpace(Globals.Settings.MongoDbPassword))
             {
-                Console.WriteLine("[WARN] MongoDB non configuré");
+                Console.WriteLine("[WARN] MongoDB non configuré - utilisation du stockage local (JSON)");
+                try
+                {
+                    var svcLocal = new JsonFileService<Ouvrage>("ouvrages.json");
+                    ouvrages = new RepositoryOuvrages(svcLocal);
+                    ouvrages.GetAllOuvrages();
+                    Console.WriteLine($"[OK] {ouvrages.Items.Count} ouvrages chargés (JSON)");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ERREUR] Impossible d'initialiser le repository local : {ex.Message}");
+                }
                 return;
             }
 
             MongoDBServiceSettings settingsService = new()
             {
-                AppName = "AppName",
+                AppName = Globals.AppName,
+                User = Globals.Settings.MongoUser ?? string.Empty,
+                Host = Globals.Settings.MongoHost ?? string.Empty,
                 Password = Globals.Settings.MongoDbPassword ?? "Empty",
-                DatabaseName = "BibliothequeDB",
-                CollectionName = "Ouvrages",
+                DatabaseName = Globals.Settings.MongoDatabase ?? "BibliothequeDB",
+                CollectionName = Globals.Settings.MongoCollection ?? "Ouvrages",
             };
 
             try
