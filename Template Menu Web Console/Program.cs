@@ -17,11 +17,10 @@ internal class Program
 {
     private static void Main(string[] _)
     {
-        EmilsCMSCore app = new();
+        CMSCore app = new();
 
-        // Explicitly instantiate the user application and register its main menu.
         var userApp = new UserApp(app);
-        app.RegisterUserMainMenu(userApp.ShowMainMenu);
+        app.RegisterUserMainMenu(() => userApp.ShowMainMenu());
 
         app.RunApp();
     }

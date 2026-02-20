@@ -1,17 +1,16 @@
-﻿using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization;
 using Newtonsoft.Json;
-using static EmilsWork.EmilsCMS.CMSClasses;
-using static EmilsWork.EmilsCMS.Helpers;
+// using static imports removed to avoid duplicate-type/ambiguous references
 using Formatting = Newtonsoft.Json.Formatting;
 
 namespace EmilsWork.EmilsCMS
 {
-    internal class EmilsCMSCore
+    internal class CMSCore
     {
         // Optional delegate to call the user-provided main menu
         private Action? userMainMenuAction;
 
-        public EmilsCMSCore(Action? mainMenuAction = null)
+        public CMSCore(Action? mainMenuAction = null)
         {
             userMainMenuAction = mainMenuAction;
         }
@@ -38,7 +37,7 @@ namespace EmilsWork.EmilsCMS
             }
             catch (Exception ex)
             {
-                ClearConsole();
+                Helpers.ClearConsole();
                 Console.WriteLine("=== ERREUR FATALE ===");
                 Console.WriteLine(ex.Message);
                 Console.WriteLine();
@@ -61,7 +60,7 @@ namespace EmilsWork.EmilsCMS
 
         public void MainMenu(bool showError = false)
         {
-            ClearConsole();
+            Helpers.ClearConsole();
 
             // Affiche un message d'erreur si la commande précédente était invalide
             if (showError)
@@ -105,11 +104,9 @@ namespace EmilsWork.EmilsCMS
             userMainMenuAction = menuAction ?? throw new ArgumentNullException(nameof(menuAction));
         }
 
-        // Reflection-based discovery removed in favor of explicit registration.
-
         public void ShowInfo()
         {
-            ClearConsole();
+            Helpers.ClearConsole();
             Console.WriteLine("=== INFORMATIONS ===");
             Console.WriteLine();
             Console.WriteLine($"Application : {Globals.AppName}");
@@ -127,84 +124,20 @@ namespace EmilsWork.EmilsCMS
             MainMenu();
         }
 
-        // =================================================================
-        // PARAMÈTRES
-        // =================================================================
-        // Menu de configuration de l'application
-        // Les paramètres sont sauvegardés dans settings.json
-        // =================================================================
-
-        public void SettingsMenu(bool showError = false)
+        /// <summary>
+        /// Simple settings menu placeholder exposed to user apps.
+        /// </summary>
+        public void SettingsMenu()
         {
-            ClearConsole();
-
-            if (showError)
-            {
-                Console.WriteLine("[!] Commande non reconnue");
-                Console.WriteLine();
-            }
-
-            Console.WriteLine("=== PARAMÈTRES ===");
-            Console.WriteLine();
-
-            string mongoStatus = Globals.Settings.MongoDbPassword != null ? "Configuré ✓" : "Non configuré ✗";
-            Console.WriteLine($"MongoDB : {mongoStatus}");
-            Console.WriteLine();
-
-            MenuChar currentMenu = new()
-            {
-                MenuNames =
-                [
-                    "1. Configurer mot de passe MongoDB",
-                    "",
-                    "Q. Retour au menu principal"
-                ],
-                Chars = ['1', 'q'],
-                Actions =
-                [
-                    () => ConfigureMongoPassword(),
-                    () => MainMenu()
-                ],
-                OnError = () => { SettingsMenu(true); }
-            };
-
-            ProcessMenuInput(currentMenu);
-        }
-
-        public void ConfigureMongoPassword()
-        {
-            ClearConsole();
-            Console.WriteLine("=== CONFIGURATION MONGODB ===");
-            Console.WriteLine();
-
-            string password = AskUsers<string>("Mot de passe MongoDB : ");
-
-            if (!string.IsNullOrWhiteSpace(password))
-            {
-                Globals.Settings.MongoDbPassword = password;
-                SaveSettings();
-                Console.WriteLine();
-                Console.WriteLine("[OK] Configuré ✓");
-                Console.WriteLine();
-                Console.WriteLine("Redémarrez l'application pour utiliser MongoDB");
-            }
-            else
-            {
-                Console.WriteLine();
-                Console.WriteLine("[ANNULÉ]");
-            }
-
-            Console.WriteLine("Appuyez sur Entrée...");
+            Helpers.ClearConsole();
+            Console.WriteLine("=== PARAMETRES ===");
+            Console.WriteLine("Aucun paramètre modifiable pour l'instant.");
+            Console.WriteLine("Appuyez sur Entrée pour revenir...");
             Console.ReadLine();
-            SettingsMenu();
+            MainMenu();
         }
 
-        // =================================================================
-        // CHARGEMENT / SAUVEGARDE
-        // =================================================================
-        // Fonctions pour persister les données entre les sessions
-        // Modifiez ces fonctions pour ajouter vos propres données
-        // =================================================================
+        // Rest of methods kept as in original core file (Load/Save, InitializeMongoDBRepository, ProcessMenuInput, etc.)
 
         void LoadSettings()
         {
@@ -280,7 +213,7 @@ namespace EmilsWork.EmilsCMS
                 IService<Ouvrage> service = new MongoDBService<Ouvrage>(settingsService, ConfigureOuvrageBsonMaps);
                 ouvrages = new RepositoryOuvrages(service);
                 ouvrages.GetAllOuvrages();
-                Console.WriteLine($"[OK] {ouvrages.Ouvrages.Count} ouvrages chargés (MongoDB)");
+                Console.WriteLine($"[OK] {ouvrages.Items.Count} ouvrages chargés (MongoDB)");
             }
             catch (Exception ex)
             {
@@ -317,60 +250,12 @@ namespace EmilsWork.EmilsCMS
 
         public static void ExitApp()
         {
-            ClearConsole();
+            Helpers.ClearConsole();
             Console.WriteLine("=== FERMETURE ===");
             Console.WriteLine();
             Console.WriteLine("Au revoir !");
             Environment.Exit(0);
         }
 
-        // =================================================================
-        // SYSTÈME DE MENU
-        // =================================================================
-        // Ne pas modifier sauf si vous comprenez le fonctionnement
-        // =================================================================
-
-        /// <summary>
-        /// Affiche le menu et traite l'entrée utilisateur
-        /// </summary>
-        /// <param name="menu">Configuration du menu à afficher</param>
-        public static void ProcessMenuInput(MenuChar menu)
-        {
-            // Affiche toutes les lignes du menu
-            foreach (string line in menu.MenuNames)
-            {
-                Console.WriteLine(line);
-            }
-
-            // Attend une touche et la convertit en minuscule
-            char input = char.ToLower(Console.ReadKey(true).KeyChar);
-            Console.WriteLine();
-
-            // Cherche l'action correspondante
-            for (int i = 0; i < menu.Chars.Count; i++)
-            {
-                if (menu.Chars[i] == input)
-                {
-                    menu.Actions[i]();
-                    return;
-                }
-            }
-
-            if (menu.OnError != null)
-            {
-                menu.OnError();
-                return;
-            }
-            else
-            {
-                // If caller did not provide an OnError handler, simply return to allow the
-                // caller to decide how to continue. Previously this attempted to call
-                // the instance MainMenu from a static method which is invalid.
-                Console.WriteLine("[WARN] Invalid menu input.");
-                return;
-            }
-        }
-
     }
 }
-

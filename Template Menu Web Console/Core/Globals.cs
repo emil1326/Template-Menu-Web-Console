@@ -1,4 +1,7 @@
-﻿using static EmilsWork.EmilsCMS.CMSClasses;
+﻿// static import removed
+using System;
+using System.IO;
+using System.Reflection;
 
 namespace EmilsWork.EmilsCMS
 {
@@ -14,13 +17,13 @@ namespace EmilsWork.EmilsCMS
         public const bool noCrashMode = true; // Si true, l'application redémarrera automatiquement après une exception non gérée au lieu de fermer.
         public static AppSettings Settings = new();
         // infos
-        public const string AppVersion = "1.0";        // Version de l'application
+        public const string AppVersion = "1.1";        // Version de l'application
         public const string AppName = "Mongo console app";  // Nom de l'application
         public const string SettingsFile = "settings.json";  // Fichier de configuration
         public const string Createur = "Emilien Devauchelle et Jonathan Basque"; // Information sur le createur
         public const string Compagnie = "Emil's works"; // Information de compagnie
-        public const string AppDate = "2026-02-05"; // Date de création ou de dernière mise à jour
-        public const string AppHeader = $@"                                         
+        public static readonly string AppDate = GetBuildTime(); // Last build timestamp (computed at runtime)
+        public static readonly string AppHeader = $@"                                         
  /$$      /$$                                         /$$ /$$$$$$$  /$$$$$$$ 
 | $$$    /$$$                                        | $$| $$__  $$| $$__  $$
 | $$$$  /$$$$  /$$$$$$  /$$$$$$$   /$$$$$$   /$$$$$$ | $$| $$  \ $$| $$  \ $$
@@ -41,5 +44,23 @@ namespace EmilsWork.EmilsCMS
         |__//$$/                                                             
            |__/                                                              
 ";
+
+        private static string GetBuildTime()
+        {
+            try
+            {
+                var asm = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
+                var path = asm?.Location;
+                if (string.IsNullOrEmpty(path))
+                    return DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+
+                var dt = File.GetLastWriteTime(path);
+                return dt.ToString("yyyy-MM-dd HH:mm:ss");
+            }
+            catch
+            {
+                return DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            }
+        }
     }
 }

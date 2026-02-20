@@ -1,22 +1,18 @@
-using MongoDB.Bson.Serialization;
-using Newtonsoft.Json;
-using static EmilsWork.EmilsCMS.CMSClasses;
-using static EmilsWork.EmilsCMS.Helpers;
-using Formatting = Newtonsoft.Json.Formatting;
+using System;
+using System.Linq;
+using System.Collections.Generic;
 using EmilsWork.EmilsCMS;
+using static EmilsWork.EmilsCMS.Helpers;
+
 internal class UserApp
 {
-    private readonly EmilsCMSCore core;
+    private readonly CMSCore core;
 
-    public UserApp(EmilsCMSCore core)
+    public UserApp(CMSCore core)
     {
         this.core = core ?? throw new ArgumentNullException(nameof(core));
     }
     // Public wrapper so the host/core can register and call the user's menu
-    public void ShowMainMenu()
-    {
-        UserMainMenu();
-    }
     // =================================================================
     // MENU PRINCIPAL
     // =================================================================
@@ -24,48 +20,41 @@ internal class UserApp
     // Modifiez MenuNames, Chars et Actions pour personnaliser le menu
     // =================================================================
 
-    void UserMainMenu(bool showError = false)
+    public void ShowMainMenu()
     {
-
         // --- Configuration du menu principal ---
         // MenuNames : texte affiché pour chaque option
         // Chars : touche associée à chaque option (en minuscule)
         // Actions : fonction à exécuter pour chaque option
         // IMPORTANT : le nombre d'éléments doit correspondre entre les trois listes
 
-        MenuChar currentMenu = new()
-        {
-            MenuNames =
+        new MenuChar(
             [
                 "=== MENU PRINCIPAL ===",
-                    "",
-                    "1. Lister tous les ouvrages",
-                    "2. Ajouter un ouvrage",
-                    "3. Modifier un ouvrage",
-                    "4. Détruire un item",
-                    "",
-                    "",
-                    "S. Paramètres",
-                    "I. Informations",
-                    "",
-                    "Q. Quitter"
+                "",
+                "1. Lister tous les ouvrages",
+                "2. Ajouter un ouvrage",
+                "3. Modifier un ouvrage",
+                "4. Détruire un item",
+                "",
+                "",
+                "S. Paramètres",
+                "I. Informations",
+                "",
+                "Q. Quitter"
             ],
-                Chars = ['1', '2', '3', '4', 'h', 's', 'i', 'q'],
-            Actions =
+            ['1', '2', '3', '4', 'h', 's', 'i', 'q'],
             [
                 () => ListAll(),
-                    () => CreateOuvrage(),
-                    () => ModifyItem(),
-                    () => DeleteItem(),
-                    () => HiddenMenu(),
+                () => CreateOuvrage(),
+                () => ModifyItem(),
+                () => DeleteItem(),
+                () => HiddenMenu(),
                 () => core.SettingsMenu(),
                 () => core.ShowInfo(),
-                    () => EmilsCMSCore.ExitApp()
+                () => CMSCore.ExitApp()
             ]
-        };
-
-        // Affiche le menu et attend une entrée utilisateur
-        EmilsCMSCore.ProcessMenuInput(currentMenu);
+        ).ProcessMenuInput();
     }
 
     // =================================================================
@@ -86,28 +75,23 @@ internal class UserApp
         Console.WriteLine();
 
         // --- Exemple de sous-menu ---
-        MenuChar currentMenu = new MenuChar
-        {
-            MenuNames =
-             [
-                 "1. Voir tous les items",
-                    "2. Rechercher par type",
-                    "3. Rechercher par requête personnalisée",
-                    "",
-                    "Q. Retour"
-             ],
-            Chars = ['1', '2', '3', 'q'],
-            Actions =
-             [
-                 () => { ShowAllItems(); },
-                    () => { SearchByType(); },
-                    () => { SearchByQuery(); },
-                    () => core.MainMenu()
-             ],
-            OnError = () => { ListAll(); }
-        };
-
-        EmilsCMSCore.ProcessMenuInput(currentMenu);
+        new MenuChar(
+            [
+                "1. Voir tous les items",
+                "2. Rechercher par type",
+                "3. Rechercher par requête personnalisée",
+                "",
+                "Q. Retour"
+            ],
+            ['1', '2', '3', 'q'],
+            [
+                () => { ShowAllItems(); },
+                () => { SearchByType(); },
+                () => { SearchByQuery(); },
+                () => core.MainMenu()
+            ],
+            () => { ListAll(); }
+        ).ProcessMenuInput();
     }
 
     void SearchByType()
@@ -118,28 +102,23 @@ internal class UserApp
         Console.WriteLine("Sélectionnez le type d'ouvrage à afficher :");
         Console.WriteLine();
 
-        MenuChar currentMenu = new MenuChar
-        {
-            MenuNames =
-              [
-                  "1. Livres uniquement",
-                    "2. Bandes dessinées uniquement",
-                    "3. Périodiques uniquement",
-                    "",
-                    "Q. Retour"
-              ],
-            Chars = ['1', '2', '3', 'q'],
-            Actions =
-              [
-                  () => { ShowItemsByType<Livre>(); },
-                    () => { ShowItemsByType<BandeDessine>(); },
-                    () => { ShowItemsByType<Periodique>(); },
-                    () => ListAll()
-              ],
-            OnError = () => { SearchByType(); }
-        };
-
-        EmilsCMSCore.ProcessMenuInput(currentMenu);
+        new MenuChar(
+            [
+                "1. Livres uniquement",
+                "2. Bandes dessinées uniquement",
+                "3. Périodiques uniquement",
+                "",
+                "Q. Retour"
+            ],
+            ['1', '2', '3', 'q'],
+            [
+                () => { ShowItemsByType<Livre>(); },
+                () => { ShowItemsByType<BandeDessine>(); },
+                () => { ShowItemsByType<Periodique>(); },
+                () => ListAll()
+            ],
+            () => { SearchByType(); }
+        ).ProcessMenuInput();
     }
 
     void ShowItemsByType<T>() where T : Ouvrage
@@ -156,7 +135,7 @@ internal class UserApp
         Console.WriteLine($"=== {typeName.ToUpper()} ===");
         Console.WriteLine();
 
-            var items = core.Ouvrages.GetOuvragesByType<T>();
+        var items = core.Ouvrages.GetOuvragesByType<T>();
 
         if (items.Count == 0)
         {
@@ -233,7 +212,7 @@ internal class UserApp
         Console.WriteLine("=== LISTE DES OUVRAGES ===");
         Console.WriteLine();
 
-            List<Ouvrage> allOuvrages = core.Ouvrages.GetOuvragesByQuery(searchQuery);
+        List<Ouvrage> allOuvrages = core.Ouvrages.GetOuvragesByQuery(searchQuery);
 
         if (allOuvrages.Count == 0)
         {
@@ -243,7 +222,7 @@ internal class UserApp
         }
         else
         {
-            var livres = allOuvrages.OfType<Livre>().Where(l => l is not BandeDessine).ToList();
+            var livres = allOuvrages.OfType<Livre>().ToList();
             var bds = allOuvrages.OfType<BandeDessine>().ToList();
             var periodiques = allOuvrages.OfType<Periodique>().ToList();
 
@@ -302,7 +281,7 @@ internal class UserApp
 
         string titre = AskUsers<string>("Titre de l'ouvrage : ");
 
-        if (!TryAskUsers<int>("Nombre d'exemplaires disponibles : ", out int dispo))
+        if (!TryAskUsers("Nombre d'exemplaires disponibles : ", out int dispo))
         {
             Console.WriteLine("Entrée invalide, veuillez réessayer.");
             Console.WriteLine("Appuyez sur Entrée pour continuer...");
@@ -311,7 +290,7 @@ internal class UserApp
             return;
         }
 
-        if (!TryAskUsers<decimal>("Prix de l'ouvrage (en $) : ", out decimal prix))
+        if (!TryAskUsers("Prix de l'ouvrage (en $) : ", out decimal prix))
         {
             Console.WriteLine("Entrée invalide, veuillez réessayer.");
             Console.WriteLine("Appuyez sur Entrée pour continuer...");
@@ -323,25 +302,20 @@ internal class UserApp
         Console.WriteLine();
         Console.WriteLine("Quel est le type d'ouvrage ?");
 
-        MenuChar currentMenu = new MenuChar
-        {
-            MenuNames =
-             [
-                 "1. Ajouter un livre",
-                    "2. Ajouter une bande dessinée",
-                    "3. Enregistrer un périodique",
-                ],
-            Chars = ['1', '2', '3'],
-            Actions =
-             [
-                 () => { AddSub(new Livre(){Titre = titre, Dispo = dispo, Prix = prix}); },
-                    () => { AddSub(new BandeDessine(){Titre = titre, Dispo = dispo, Prix = prix}); },
-                    () => { AddSub(new Periodique(){Titre = titre, Dispo = dispo, Prix = prix}); },
-                ],
-            OnError = () => { CreateOuvrage(); }
-        };
-
-        EmilsCMSCore.ProcessMenuInput(currentMenu);
+        new MenuChar(
+            [
+                "1. Ajouter un livre",
+                "2. Ajouter une bande dessinée",
+                "3. Enregistrer un périodique"
+            ],
+            ['1', '2', '3'],
+            [
+                () => { AddSub(new Livre(){ Titre = titre, Dispo = dispo, Prix = prix }); },
+                () => { AddSub(new BandeDessine(){ Titre = titre, Dispo = dispo, Prix = prix }); },
+                () => { AddSub(new Periodique(){ Titre = titre, Dispo = dispo, Prix = prix }); }
+            ],
+            () => { CreateOuvrage(); }
+        ).ProcessMenuInput();
     }
 
     void AddSub(Ouvrage BaseOuvrage)
@@ -353,18 +327,18 @@ internal class UserApp
                 bd.Auteur = AskUsers<string>("Auteur de la BD : ");
                 bd.Dessinateur = AskUsers<string>("Dessinateur de la BD : ");
                 var exBd = AskUsers<string>("Exemplaires (séparés par des virgules, vide si aucun) : ");
-                if (!string.IsNullOrWhiteSpace(exBd)) bd.Exemplaires = [.. exBd.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0)];
+                if (!string.IsNullOrWhiteSpace(exBd)) bd.Exemplaires = exBd.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
 
-                TryAskUsers<int?>("Année (laisser vide si inconnue) : ", out int? anneeBd);
+                TryAskUsers("Année (laisser vide si inconnue) : ", out int? anneeBd);
                 bd.Annee = anneeBd;
                 break;
 
             case Livre livre:
                 livre.Auteur = AskUsers<string>("Auteur du livre : ");
                 var ex = AskUsers<string>("Exemplaires (séparés par des virgules, vide si aucun) : ");
-                if (!string.IsNullOrWhiteSpace(ex)) livre.Exemplaires = [.. ex.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0)];
+                if (!string.IsNullOrWhiteSpace(ex)) livre.Exemplaires = ex.Split(',').Select(s => s.Trim()).Where(s => s.Length > 0).ToList();
 
-                TryAskUsers<int?>("Année (laisser vide si inconnue) : ", out int? anneeLivre);
+                TryAskUsers("Année (laisser vide si inconnue) : ", out int? anneeLivre);
                 livre.Annee = anneeLivre;
                 livre.MaisonEdition = AskUsers<string>("Maison d'édition : ");
                 break;
@@ -372,13 +346,13 @@ internal class UserApp
             case Periodique periodique:
                 periodique.Periodicite = AskUsers<string>("Périodicité du périodique (ex: hebdomadaire, mensuel, trimestriel, journalier) : ");
 
-                TryAskUsers<DateTime?>("Date de publication (yyyy-mm-dd, vide si inconnue) : ", out DateTime? datePer);
+                TryAskUsers("Date de publication (yyyy-mm-dd, vide si inconnue) : ", out DateTime? datePer);
                 periodique.Date = datePer;
                 break;
         }
 
         // Assign Id and store
-            core.Ouvrages.AddOuvrage(BaseOuvrage);
+        core.Ouvrages.AddOuvrage(BaseOuvrage);
 
         Console.WriteLine("Ouvrage ajouté avec succès.");
         Console.WriteLine("Appuyez sur Entrée pour revenir au menu principal...");
@@ -397,7 +371,7 @@ internal class UserApp
         Console.WriteLine("Modifier l'un des ouvrages de la base de données, veuillez préparer votre ID d'ouvrage");
         Console.WriteLine();
 
-        if (!TryAskUsers<int>("ID de l'ouvrage à modifier : ", out int ouvrageID))
+        if (!TryAskUsers("ID de l'ouvrage à modifier : ", out int ouvrageID))
         {
             Console.WriteLine("ID invalide.");
             Console.WriteLine("Appuyez sur Entrée pour revenir...");
@@ -406,14 +380,14 @@ internal class UserApp
             return;
         }
 
-            Ouvrage? currOuvrage = core.Ouvrages.GetOuvrageById(ouvrageID);
+        Ouvrage? currOuvrage = core.Ouvrages.GetOuvrageById(ouvrageID);
 
         if (currOuvrage == null)
         {
             Console.WriteLine("Aucun ouvrage trouvé avec cet ID.");
             Console.WriteLine("Appuyez sur Entrée pour revenir...");
-                Console.ReadLine();
-                core.MainMenu();
+            Console.ReadLine();
+            core.MainMenu();
         }
         else
         {
@@ -449,9 +423,9 @@ internal class UserApp
                 char input = AskUsers<char>("Sélectionnez le numéro du champ à modifier (ou Q pour quitter) : ", true);
                 if (input == 'q')
                 {
-                        isEditing = false;
-                        core.Ouvrages.UpdateOuvrage(currOuvrage);
-                        core.MainMenu();
+                    isEditing = false;
+                    core.Ouvrages.UpdateOuvrage(currOuvrage);
+                    core.MainMenu();
                 }
                 else
                 {
@@ -462,13 +436,13 @@ internal class UserApp
                             currOuvrage.Titre = AskUsers<string>("Nouveau titre : ");
                             break;
                         case '2':
-                            if (TryAskUsers<int>("Nouvelle disponibilité : ", out int dispo))
+                            if (TryAskUsers("Nouvelle disponibilité : ", out int dispo))
                                 currOuvrage.Dispo = dispo;
                             else
                                 Console.WriteLine("Valeur invalide, aucun changement effectué.");
                             break;
                         case '3':
-                            if (TryAskUsers<decimal>("Nouveau prix : ", out decimal prix))
+                            if (TryAskUsers("Nouveau prix : ", out decimal prix))
                                 currOuvrage.Prix = prix;
                             else
                                 Console.WriteLine("Valeur invalide, aucun changement effectué.");
@@ -486,14 +460,14 @@ internal class UserApp
                                 bd5.Dessinateur = AskUsers<string>("Nouveau dessinateur : ");
                             else if (currOuvrage is Livre livre5)
                             {
-                                if (TryAskUsers<int?>("Nouvelle année : ", out int? annee))
+                                if (TryAskUsers("Nouvelle année : ", out int? annee))
                                     livre5.Annee = annee;
                                 else
                                     Console.WriteLine("Valeur invalide, aucun changement effectué.");
                             }
                             else if (currOuvrage is Periodique p5)
                             {
-                                if (TryAskUsers<DateTime?>("Nouvelle date (yyyy-mm-dd) : ", out DateTime? date))
+                                if (TryAskUsers("Nouvelle date (yyyy-mm-dd) : ", out DateTime? date))
                                     p5.Date = date;
                                 else
                                     Console.WriteLine("Valeur invalide, aucun changement effectué.");
@@ -502,7 +476,7 @@ internal class UserApp
                         case '6':
                             if (currOuvrage is BandeDessine bd6)
                             {
-                                if (TryAskUsers<int?>("Nouvelle année : ", out int? anneeBd))
+                                if (TryAskUsers("Nouvelle année : ", out int? anneeBd))
                                     bd6.Annee = anneeBd;
                                 else
                                     Console.WriteLine("Valeur invalide, aucun changement effectué.");
@@ -531,23 +505,23 @@ internal class UserApp
         Console.WriteLine("=== Supprimer un ouvrage ===");
         Console.WriteLine();
 
-        if (!TryAskUsers<int>("ID de l'ouvrage à supprimer : ", out int ouvrageID))
+        if (!TryAskUsers("ID de l'ouvrage à supprimer : ", out int ouvrageID))
         {
             Console.WriteLine("ID invalide.");
             Console.WriteLine("Appuyez sur Entrée pour revenir...");
-                Console.ReadLine();
-                core.MainMenu();
+            Console.ReadLine();
+            core.MainMenu();
             return;
         }
 
-            Ouvrage? currOuvrage = core.Ouvrages.GetOuvrageById(ouvrageID);
+        Ouvrage? currOuvrage = core.Ouvrages.GetOuvrageById(ouvrageID);
 
         if (currOuvrage == null)
         {
             Console.WriteLine("Aucun ouvrage trouvé avec cet ID.");
             Console.WriteLine("Appuyez sur Entrée pour revenir...");
-                Console.ReadLine();
-                core.MainMenu();
+            Console.ReadLine();
+            core.MainMenu();
         }
         else
         {

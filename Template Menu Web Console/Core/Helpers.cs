@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 
 namespace EmilsWork.EmilsCMS
 {
@@ -101,7 +101,9 @@ namespace EmilsWork.EmilsCMS
 
                 if (targetType == typeof(DateTime))
                 {
-                    if (DateTime.TryParseExact(text, ["yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy"], CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt)
+                    var formats = new[] { "yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy" };
+
+                    if (DateTime.TryParseExact(text, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt)
                         || DateTime.TryParse(text, CultureInfo.CurrentCulture, DateTimeStyles.None, out dt)
                         || DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt))
                     {
