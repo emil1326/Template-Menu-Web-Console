@@ -19,6 +19,10 @@ internal class Program
     {
         EmilsCMSCore app = new();
 
-        app.Run();
+        // Explicitly instantiate the user application and register its main menu.
+        var userApp = new UserApp(app);
+        app.RegisterUserMainMenu(userApp.ShowMainMenu);
+
+        app.RunApp();
     }
 }

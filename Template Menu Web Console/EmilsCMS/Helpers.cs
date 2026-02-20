@@ -4,6 +4,36 @@ namespace EmilsWork.EmilsCMS
 {
     internal class Helpers
     {
+        /// <summary>
+        /// Clears the console screen and attempts to clear the terminal's scrollback buffer.
+        /// </summary>
+        /// <remarks>
+        /// This method calls <see cref="Console.Clear"/> and then writes an ANSI
+        /// escape sequence that requests the terminal to also clear its scrollback
+        /// buffer. The ANSI sequence is dependent on the terminal emulator and may
+        /// be ignored on some hosts; callers should not rely on scrollback being
+        /// cleared in every environment.
+        /// </remarks>
+        public static void ClearConsole()
+        {
+            Console.Clear();
+            Console.WriteLine("\x1b[3J");
+        }
+
+        /// <summary>
+        /// Prompts the user with <paramref name="Question"/> and attempts to convert
+        /// the input to the requested type <typeparamref name="T"/>.
+        /// </summary>
+        /// <typeparam name="T">The target type to convert the user's input into.</typeparam>
+        /// <param name="Question">Prompt text displayed to the user.</param>
+        /// <param name="response">When the method returns, contains the converted value if parsing
+        /// succeeded; otherwise the default value of <typeparamref name="T"/>.</param>
+        /// <param name="UseChar">If true, reads a single key press instead of a full line.</param>
+        /// <param name="Erase">If true and <paramref name="UseChar"/> is true, the key pressed is not echoed.</param>
+        /// <param name="inline">If true, writes the prompt on the same line as the input.</param>
+        /// <returns>True when conversion succeeded; otherwise false. This method swallows
+        /// exceptions thrown by <see cref="AskUsers{T}(string,bool,bool,bool)"/> and
+        /// returns false on failure.</returns>
         public static bool TryAskUsers<T>(string Question, out T response, bool UseChar = false, bool Erase = false, bool inline = true)
         {
             try
@@ -13,11 +43,38 @@ namespace EmilsWork.EmilsCMS
             }
             catch
             {
-                response = default;
+                response = default!;
                 return false;
             }
         }
 
+        /// <summary>
+        /// Prompts the user with <paramref name="Question"/> and converts the input
+        /// to <typeparamref name="T"/>. This method does not catch conversion exceptions;
+        /// callers should handle <see cref="InvalidCastException"/> as needed or use
+        /// <see cref="TryAskUsers{T}(string,out T,bool,bool,bool)"/> to receive a
+        /// success flag instead.
+        /// </summary>
+        /// <typeparam name="T">Target type for the converted value. Nullable value types
+        /// are supported; an empty input will return <see langword="default"/> for
+        /// nullable types.</typeparam>
+        /// <param name="Question">Prompt text displayed to the user.</param>
+        /// <param name="UseChar">If true, reads a single key press instead of a full line.</param>
+        /// <param name="Erase">If true and <paramref name="UseChar"/> is true, the key pressed is not echoed.</param>
+        /// <param name="inline">If true, writes the prompt on the same line as the input.</param>
+        /// <returns>The parsed value as <typeparamref name="T"/>, or <see langword="default"/>
+        /// if the input was null or an allowed nullable target type is empty.</returns>
+        /// <exception cref="InvalidCastException">Thrown when the input cannot be converted to
+        /// <typeparamref name="T"/>, when a required (non-nullable) value is empty, or when
+        /// a date string does not match accepted formats. The original exception is preserved
+        /// as the <see cref="Exception.InnerException"/>.</exception>
+        /// <remarks>
+        /// Special handling implemented by this method:
+        /// - DateTime: attempts several common formats (ISO yyyy-MM-dd, dd/MM/yyyy, MM/dd/yyyy)
+        ///   using invariant and culture fallbacks.
+        /// - Floating point types: normalizes decimal separator for current culture before conversion.
+        /// - Nullable target types: empty or whitespace input returns <see langword="default"/>.
+        /// </remarks>
         public static T AskUsers<T>(string Question, bool UseChar = false, bool Erase = false, bool inline = true)
         {
             if (inline)
@@ -28,7 +85,7 @@ namespace EmilsWork.EmilsCMS
             string? text = UseChar ? Console.ReadKey(Erase).KeyChar.ToString() : Console.ReadLine();
 
             if (text == null)
-                return default;
+                return default!;
 
             try
             {
@@ -37,7 +94,7 @@ namespace EmilsWork.EmilsCMS
                 if (string.IsNullOrWhiteSpace(text))
                 {
                     if (Nullable.GetUnderlyingType(typeof(T)) != null)
-                        return default;
+                        return default!;
 
                     throw new InvalidCastException("Valeur requise.");
                 }

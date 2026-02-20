@@ -28,9 +28,6 @@ namespace EmilsWork.EmilsCMS
         /// </summary>
         public class AppSettings
         {
-            /// <summary>Chemin du fichier JSON local pour la persistance.</summary>
-            public string JsonFilePath { get; set; } = "ouvrages.json";
-
             /// <summary>Information utilisateur sauvegardée localement et utilisée pour construire les settings MongoDB runtime.</summary>
             public string? MongoDbPassword { get; set; } = null;
         }
@@ -68,6 +65,5 @@ namespace EmilsWork.EmilsCMS
         {
             public string Dessinateur { get; set; } = string.Empty;
         }
-
     }
 }
