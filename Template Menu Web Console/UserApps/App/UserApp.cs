@@ -353,9 +353,15 @@ internal class UserApp
         }
 
         // Assign Id and store
-        core.Ouvrages.AddOuvrage(BaseOuvrage);
-
-        Console.WriteLine("Ouvrage ajouté avec succès.");
+        var addResult = core.Ouvrages.AddOuvrage(BaseOuvrage);
+        if (addResult.IsSuccess)
+        {
+            Console.WriteLine("Ouvrage ajouté avec succès.");
+        }
+        else
+        {
+            Console.WriteLine(addResult.Error?.ToUserMessage() ?? "Erreur lors de l'ajout de l'ouvrage.");
+        }
         Console.WriteLine("Appuyez sur Entrée pour revenir au menu principal...");
         Console.ReadLine();
         core.MainMenu();
@@ -425,7 +431,13 @@ internal class UserApp
                 if (input == 'q')
                 {
                     isEditing = false;
-                    core.Ouvrages.UpdateOuvrage(currOuvrage);
+                    var updateResult = core.Ouvrages.UpdateOuvrage(currOuvrage);
+                    if (!updateResult.IsSuccess)
+                    {
+                        Console.WriteLine(updateResult.Error?.ToUserMessage() ?? "Erreur lors de la mise à jour de l'ouvrage.");
+                        Console.WriteLine("Appuyez sur Entrée pour continuer...");
+                        Console.ReadLine();
+                    }
                     core.MainMenu();
                 }
                 else
@@ -536,9 +548,16 @@ internal class UserApp
 
             if (confirmation == 'o')
             {
-                core.Ouvrages.RemoveOuvrageById(ouvrageID);
+                var removeResult = core.Ouvrages.RemoveOuvrageById(ouvrageID);
                 Console.WriteLine();
-                Console.WriteLine("Ouvrage supprimé avec succès.");
+                if (removeResult.IsSuccess)
+                {
+                    Console.WriteLine("Ouvrage supprimé avec succès.");
+                }
+                else
+                {
+                    Console.WriteLine(removeResult.Error?.ToUserMessage() ?? "Erreur lors de la suppression de l'ouvrage.");
+                }
             }
             else
             {

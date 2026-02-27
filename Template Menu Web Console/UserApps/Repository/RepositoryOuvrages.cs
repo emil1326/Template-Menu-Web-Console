@@ -7,37 +7,16 @@ namespace EmilsWork.EmilsCMS
     // User-side repository implementation for Ouvrages.
     public class RepositoryOuvrages : RepositoryBase<Ouvrage>
     {
-        private readonly IService<Ouvrage> service;
-
         public RepositoryOuvrages(IService<Ouvrage> svc)
+            : base(svc)
         {
-            service = svc ?? throw new ArgumentNullException(nameof(svc));
-            Items = new List<Ouvrage>();
         }
 
-        public override void Add(Ouvrage item)
+        public Result GetAllOuvrages()
         {
-            service.Add(item);
-            Items.Add(item);
+            var result = GetAll();
+            return result.IsSuccess ? Result.Success() : Result.Failure(result.Error!);
         }
-
-        public override void Remove(Ouvrage item)
-        {
-            service.Remove(item);
-            Items.Remove(item);
-        }
-
-        public override void Save()
-        {
-            service.SaveAll(Items);
-        }
-
-        public override void Load()
-        {
-            Items = service.GetAll() ?? new List<Ouvrage>();
-        }
-
-        public void GetAllOuvrages() => Load();
 
         public List<Ouvrage> GetOuvragesByType<T>() where T : Ouvrage
         {
@@ -50,40 +29,52 @@ namespace EmilsWork.EmilsCMS
             return Items.Where(o => !string.IsNullOrWhiteSpace(o.Titre) && o.Titre.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
         }
 
-        public Ouvrage? GetOuvrageById(int id)
+        public Ouvrage? GetOuvrageById(int id, bool useCache = true)
         {
             string sid = id.ToString();
-            var found = Items.FirstOrDefault(o => o.Id == sid);
-            if (found != null) return found;
-            if (id > 0 && id <= Items.Count) return Items[id - 1];
+            var fromKey = GetById(sid, useCache);
+            if (!fromKey.IsSuccess)
+            {
+                return null;
+            }
+
+            if (fromKey.Value != null)
+            {
+                return fromKey.Value;
+            }
+
+            if (id > 0 && id <= Items.Count)
+            {
+                return Items[id - 1];
+            }
+
             return null;
         }
 
-        public void AddOuvrage(Ouvrage item)
+        public Result AddOuvrage(Ouvrage item)
         {
             if (string.IsNullOrWhiteSpace(item.Id))
             {
                 item.Id = (Items.Count + 1).ToString();
             }
-            Items.Add(item);
-            Save();
+
+            return Add(item);
         }
 
-        public void UpdateOuvrage(Ouvrage item)
+        public Result UpdateOuvrage(Ouvrage item)
         {
-            var idx = Items.FindIndex(o => o.Id == item.Id);
-            if (idx >= 0) Items[idx] = item;
-            Save();
+            return Update(item);
         }
 
-        public void RemoveOuvrageById(int id)
+        public Result RemoveOuvrageById(int id)
         {
             var o = GetOuvrageById(id);
             if (o != null)
             {
-                Items.Remove(o);
-                Save();
+                return Delete(o);
             }
+
+            return Result.Failure(new AppError(ErrorCode.NotFound, $"Ouvrage avec ID '{id}' introuvable."));
         }
     }
 }

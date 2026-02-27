@@ -1,7 +1,6 @@
 using MongoDB.Bson.Serialization;
 using Newtonsoft.Json;
 // using static imports removed to avoid duplicate-type/ambiguous references
-using Formatting = Newtonsoft.Json.Formatting;
 
 namespace EmilsWork.EmilsCMS
 {
@@ -219,9 +218,9 @@ namespace EmilsWork.EmilsCMS
 
                 // Attempt to create the service and fetch zero or more items as a connectivity test
                 var svc = new MongoDBService<Ouvrage>(s, ConfigureOuvrageBsonMaps);
-                var items = svc.GetAll();
+                var items = svc.ReadAll();
                 Console.WriteLine("[OK] MongoDB service instantiated successfully.");
-                Console.WriteLine($"Items fetched: {items?.Count ?? 0}");
+                Console.WriteLine($"Items fetched: {items.Value?.Count ?? 0}");
             }
             catch (Exception ex)
             {
@@ -239,9 +238,9 @@ namespace EmilsWork.EmilsCMS
             try
             {
                 // Use a simple JsonFileService + SettingsRepository so settings persistence is centralized
-                var svc = new JsonFileService<AppSettings>(Globals.SettingsFile);
+                var svc = new JsonFileService<AppSettings>(new JsonFileServiceSettings { FilePath = Globals.SettingsFile });
                 settingsRepo = new SettingsRepository(svc);
-                settingsRepo.Load();
+                settingsRepo.GetAll();
 
                 if (settingsRepo.Items.Count > 0)
                 {
@@ -270,7 +269,7 @@ namespace EmilsWork.EmilsCMS
                 // Ensure repository exists
                 if (settingsRepo == null)
                 {
-                    var svc = new JsonFileService<AppSettings>(Globals.SettingsFile);
+                    var svc = new JsonFileService<AppSettings>(new JsonFileServiceSettings { FilePath = Globals.SettingsFile });
                     settingsRepo = new SettingsRepository(svc);
                 }
 
@@ -301,9 +300,13 @@ namespace EmilsWork.EmilsCMS
                 Console.WriteLine("[WARN] MongoDB non configuré - utilisation du stockage local (JSON)");
                 try
                 {
-                    var svcLocal = new JsonFileService<Ouvrage>("ouvrages.json");
+                    var svcLocal = new JsonFileService<Ouvrage>(new JsonFileServiceSettings { FilePath = "ouvrages.json" });
                     ouvrages = new RepositoryOuvrages(svcLocal);
-                    ouvrages.GetAllOuvrages();
+                    var load = ouvrages.GetAllOuvrages();
+                    if (!load.IsSuccess)
+                    {
+                        Console.WriteLine($"[ERREUR] {load.Error?.ToUserMessage()}");
+                    }
                     Console.WriteLine($"[OK] {ouvrages.Items.Count} ouvrages chargés (JSON)");
                 }
                 catch (Exception ex)
@@ -327,7 +330,11 @@ namespace EmilsWork.EmilsCMS
             {
                 IService<Ouvrage> service = new MongoDBService<Ouvrage>(settingsService, ConfigureOuvrageBsonMaps);
                 ouvrages = new RepositoryOuvrages(service);
-                ouvrages.GetAllOuvrages();
+                var load = ouvrages.GetAllOuvrages();
+                if (!load.IsSuccess)
+                {
+                    Console.WriteLine($"[ERREUR] {load.Error?.ToUserMessage()}");
+                }
                 Console.WriteLine($"[OK] {ouvrages.Items.Count} ouvrages chargés (MongoDB)");
             }
             catch (Exception ex)

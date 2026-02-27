@@ -21,3 +21,43 @@ This guide explains how to create a new user application (UserApp) and register 
 Notes:
 - Prefer registration over reflection — it's explicit and easier to test.
 - User apps should avoid calling `Environment.Exit` directly; use `CMSCore.ExitApp()` when necessary.
+
+## Repository / Service Convention (v2)
+
+The data flow now follows this rule:
+
+1. User defines a data class in `UserApps/Classes` and marks its key property with `[IsId]`.
+2. User chooses an existing service (`JsonFileService<TEntity>`, `MongoDBService<TEntity>`) or creates a new one for another source.
+3. User creates a repository class that inherits `RepositoryBase<TEntity>`.
+4. For basic usage, the repository can be almost empty and still gets default CRUD + sync behavior.
+
+### ID annotation
+
+- Use `[IsId]` on the key property.
+- Composite keys are supported by putting `[IsId(Order = ...)]` on multiple properties.
+- If no `[IsId]` is found, startup/configuration fails fast.
+
+Example:
+
+```csharp
+public class Ouvrage
+{
+      [IsId]
+      public string Id { get; set; } = string.Empty;
+      public string Titre { get; set; } = string.Empty;
+}
+```
+
+### Error handling convention
+
+- Expected failures return `Result` / `Result<T>` with an `AppError`.
+- `AppError` includes a technical message and an optional user message.
+- UI should display `error.ToUserMessage()` when no custom message is provided.
+
+### Service cache/stale policy
+
+- Caching is service-owned (not repository-owned).
+- Repository methods support cache-aware reads and explicit sync:
+   - `GetAll(useCache: true)`
+   - `GetById(id, useCache: false)` to force fresh read
+   - `ReadAllFromDataSource()` / `WriteAllToDataSource()`

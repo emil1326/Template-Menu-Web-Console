@@ -3,6 +3,7 @@ namespace EmilsWork.EmilsCMS
 {
     public class Ouvrage
     {
+        [IsId]
         public string Id { get; set; } = string.Empty;
         public string Titre { get; set; } = string.Empty;
         public int Dispo { get; set; }

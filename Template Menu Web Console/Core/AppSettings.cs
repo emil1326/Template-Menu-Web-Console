@@ -2,6 +2,9 @@ namespace EmilsWork.EmilsCMS
 {
     public class AppSettings
     {
+        [IsId]
+        public string SettingsId { get; set; } = "default";
+
         // MongoDB connection settings
         public bool MongoEnabled { get; set; } = false;
         public string? MongoHost { get; set; }
