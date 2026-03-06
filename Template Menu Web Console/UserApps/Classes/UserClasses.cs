@@ -1,4 +1,6 @@
 
+using MongoDB.Bson.Serialization.Attributes;
+
 namespace EmilsWork.EmilsCMS
 {
     public class Ouvrage

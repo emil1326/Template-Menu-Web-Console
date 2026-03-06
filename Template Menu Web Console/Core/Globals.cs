@@ -23,6 +23,12 @@ namespace EmilsWork.EmilsCMS
         public const string Createur = "Emilien Devauchelle et Jonathan Basque"; // Information sur le createur
         public const string Compagnie = "Emil's works"; // Information de compagnie
         public static readonly string AppDate = GetBuildTime(); // Last build timestamp (computed at runtime)
+
+        // logging verbosity threshold; messages with severity lower than this
+        // value will not be shown on the console but still written to file.
+        // higher number = more important; default 500 (mid).
+        public static int LogSeverityThreshold = 500;
+
         public static readonly string AppHeader = $@"                                         
  /$$      /$$                                         /$$ /$$$$$$$  /$$$$$$$ 
 | $$$    /$$$                                        | $$| $$__  $$| $$__  $$

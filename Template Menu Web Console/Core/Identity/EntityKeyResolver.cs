@@ -32,7 +32,8 @@ namespace EmilsWork.EmilsCMS
                 object? raw = KeyProperties[0].GetValue(entity);
                 if (raw == null)
                 {
-                    throw new InvalidOperationException($"La clé de {typeof(TEntity).Name} est null.");
+                    // key property unexpectedly null – treat as configuration/runtime issue
+                    throw new AppError(ErrorCode.Configuration, $"La clé de {typeof(TEntity).Name} est null.");
                 }
 
                 return raw;
@@ -53,7 +54,18 @@ namespace EmilsWork.EmilsCMS
             if (entity == null) return false;
 
             var entityKey = GetKey(entity);
-            return Equals(entityKey, key);
+            if (Equals(entityKey, key))
+            {
+                return true;
+            }
+
+            // tolerate common type mismatches (e.g. numeric id stored as int vs string)
+            if (entityKey != null && key != null)
+            {
+                return string.Equals(entityKey.ToString(), key.ToString(), StringComparison.Ordinal);
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -70,7 +82,7 @@ namespace EmilsWork.EmilsCMS
             }
             catch (Exception ex)
             {
-                return Result.Failure(new AppError(ErrorCode.Configuration, ex.Message));
+                return Result.Failure(new AppError(ErrorCode.Configuration, ex.Message, ex));
             }
         }
 
@@ -84,7 +96,8 @@ namespace EmilsWork.EmilsCMS
 
             if (properties.Length == 0)
             {
-                throw new InvalidOperationException($"Aucune propriété [IsId] trouvée sur {typeof(TEntity).Name}.");
+                // configuration error detected during key resolution
+                throw new AppError(ErrorCode.Configuration, $"Aucune propriété [IsId] trouvée sur {typeof(TEntity).Name}.");
             }
 
             return properties;

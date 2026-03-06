@@ -42,7 +42,10 @@ namespace EmilsWork.EmilsCMS
             var configValidation = EntityKeyResolver<TEntity>.ValidateConfiguration();
             if (!configValidation.IsSuccess)
             {
-                throw new InvalidOperationException(configValidation.Error?.TechnicalMessage);
+                // convert configuration failure into an AppError instead of throwing a framework exception
+                throw new AppError(ErrorCode.Configuration,
+                    configValidation.Error?.Message ?? "Invalid entity key configuration.",
+                    configValidation.Error);
             }
 
             var connectionString = $"mongodb+srv://{settings.User}:{settings.Password}@{settings.Host}/?appName={settings.AppName}";
@@ -96,7 +99,7 @@ namespace EmilsWork.EmilsCMS
             }
             catch (Exception ex)
             {
-                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message));
+                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message, ex));
             }
         }
 
@@ -124,7 +127,7 @@ namespace EmilsWork.EmilsCMS
             }
             catch (Exception ex)
             {
-                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message));
+                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message, ex));
             }
         }
 
@@ -144,7 +147,7 @@ namespace EmilsWork.EmilsCMS
             }
             catch (Exception ex)
             {
-                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message));
+                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message, ex));
             }
         }
 
@@ -172,7 +175,7 @@ namespace EmilsWork.EmilsCMS
             }
             catch (Exception ex)
             {
-                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message));
+                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message, ex));
             }
         }
 
@@ -202,7 +205,7 @@ namespace EmilsWork.EmilsCMS
             }
             catch (Exception ex)
             {
-                return Result<List<TEntity>>.Failure(new AppError(ErrorCode.DataSource, ex.Message));
+                return Result<List<TEntity>>.Failure(new AppError(ErrorCode.DataSource, ex.Message, ex));
             }
         }
 
@@ -218,7 +221,9 @@ namespace EmilsWork.EmilsCMS
 
             if (idProperties.Length == 0)
             {
-                throw new InvalidOperationException($"Aucune propriété [IsId] trouvée sur {typeof(TEntity).Name}.");
+                // configuration error: entity type lacks an ID property
+                throw new AppError(ErrorCode.Configuration,
+                    $"Aucune propriété [IsId] trouvée sur {typeof(TEntity).Name}.");
             }
 
             if (idProperties.Length == 1)
@@ -229,7 +234,8 @@ namespace EmilsWork.EmilsCMS
 
             if (id is not CompositeKey composite || composite.Parts.Count != idProperties.Length)
             {
-                throw new InvalidOperationException("La clé composite fournie est invalide.");
+                // runtime error: caller provided an invalid composite key
+                throw new AppError(ErrorCode.Configuration, "La clé composite fournie est invalide.");
             }
 
             var filters = new List<FilterDefinition<TEntity>>();
@@ -246,7 +252,8 @@ namespace EmilsWork.EmilsCMS
         {
             if (value == null)
             {
-                throw new InvalidOperationException("La valeur de clé est null.");
+                // missing key value is treated as configuration/runtime error
+                throw new AppError(ErrorCode.Configuration, "La valeur de clé est null.");
             }
 
             var nonNullableType = Nullable.GetUnderlyingType(targetType) ?? targetType;

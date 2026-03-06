@@ -29,7 +29,10 @@ namespace EmilsWork.EmilsCMS
             var configValidation = EntityKeyResolver<TEntity>.ValidateConfiguration();
             if (!configValidation.IsSuccess)
             {
-                throw new InvalidOperationException(configValidation.Error?.TechnicalMessage);
+                // configuration check failure – raise as AppError
+                throw new AppError(ErrorCode.Configuration,
+                    configValidation.Error?.Message ?? "Invalid entity key configuration.",
+                    configValidation.Error);
             }
         }
 

@@ -35,8 +35,19 @@ namespace EmilsWork.EmilsCMS
             {
                 MainMenu();
             }
+            catch (AppError appErr)
+            {
+                // show user-friendly screen and then restart if configured
+                appErr.Render();
+                if (Globals.noCrashMode)
+                    RunApp();
+            }
             catch (Exception ex)
             {
+
+                // log the unexpected error with a stack trace
+                Logger.LogException(ex);
+
                 Helpers.ClearConsole();
                 Console.WriteLine("=== ERREUR FATALE ===");
                 Console.WriteLine(ex.Message);
@@ -65,6 +76,7 @@ namespace EmilsWork.EmilsCMS
             // Affiche un message d'erreur si la commande précédente était invalide
             if (showError)
             {
+                Logger.Warn("Commande non reconnue");
                 Console.WriteLine("[!] Commande non reconnue");
                 Console.WriteLine();
             }
@@ -90,6 +102,7 @@ namespace EmilsWork.EmilsCMS
             }
             else
             {
+                Logger.Warn("No user application registered. Exiting.");
                 Console.WriteLine("[WARN] No user application registered. Exiting.");
                 ExitApp();
             }
@@ -219,11 +232,14 @@ namespace EmilsWork.EmilsCMS
                 // Attempt to create the service and fetch zero or more items as a connectivity test
                 var svc = new MongoDBService<Ouvrage>(s, ConfigureOuvrageBsonMaps);
                 var items = svc.ReadAll();
+                Logger.Log("MongoDB service instantiated successfully.");
                 Console.WriteLine("[OK] MongoDB service instantiated successfully.");
                 Console.WriteLine($"Items fetched: {items.Value?.Count ?? 0}");
             }
             catch (Exception ex)
             {
+                // log full exception details
+                Logger.LogException(ex);
                 Console.WriteLine($"[ERROR] Connection test failed: {ex.Message}");
             }
 
@@ -245,18 +261,18 @@ namespace EmilsWork.EmilsCMS
                 if (settingsRepo.Items.Count > 0)
                 {
                     Globals.Settings = ApplyDefaults(settingsRepo.GetSettingsOrDefault());
-                    Console.WriteLine($"[OK] Paramètres chargés ({Globals.SettingsFile})");
+                    Logger.Log($"Paramètres chargés ({Globals.SettingsFile})", severity:100);
                 }
                 else
                 {
-                    Console.WriteLine("[INFO] Aucun fichier de paramètres trouvé, utilisation des valeurs par défaut");
+                    Logger.Warn("Aucun fichier de paramètres trouvé, utilisation des valeurs par défaut", severity:100);
                     Globals.Settings = ApplyDefaults(Globals.Settings);
                     SaveSettings();
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ERREUR] Impossible de charger les paramètres : {ex.Message}");
+                Logger.LogException(ex, severity:1000);
             }
         }
 
@@ -274,10 +290,12 @@ namespace EmilsWork.EmilsCMS
                 }
 
                 settingsRepo.SaveSingle(Globals.Settings);
+                Logger.Log($"Paramètres sauvegardés ({Globals.SettingsFile})");
                 Console.WriteLine($"[OK] Paramètres sauvegardés ({Globals.SettingsFile})");
             }
             catch (Exception ex)
             {
+                Logger.LogException(ex);
                 Console.WriteLine($"[ERREUR] Impossible de sauvegarder : {ex.Message}");
             }
         }
@@ -293,11 +311,12 @@ namespace EmilsWork.EmilsCMS
         /// </summary>
         void InitializeMongoDBRepository()
         {
-            Console.WriteLine("[INFO] Chargement depuis MongoDB...");
+Logger.Log("Chargement depuis MongoDB...");
+                Console.WriteLine("[INFO] Chargement depuis MongoDB...");
 
             if (string.IsNullOrWhiteSpace(Globals.Settings.MongoDbPassword))
             {
-                Console.WriteLine("[WARN] MongoDB non configuré - utilisation du stockage local (JSON)");
+                Logger.Warn("MongoDB non configuré - utilisation du stockage local (JSON)");
                 try
                 {
                     var svcLocal = new JsonFileService<Ouvrage>(new JsonFileServiceSettings { FilePath = "ouvrages.json" });
@@ -305,12 +324,15 @@ namespace EmilsWork.EmilsCMS
                     var load = ouvrages.GetAllOuvrages();
                     if (!load.IsSuccess)
                     {
+                        Logger.Error(load.Error?.TechnicalMessage ?? string.Empty);
                         Console.WriteLine($"[ERREUR] {load.Error?.ToUserMessage()}");
                     }
+                    Logger.Log($"{ouvrages.Items.Count} ouvrages chargés (JSON)");
                     Console.WriteLine($"[OK] {ouvrages.Items.Count} ouvrages chargés (JSON)");
                 }
                 catch (Exception ex)
                 {
+                    Logger.Error($"Impossible d'initialiser le repository local : {ex.Message}");
                     Console.WriteLine($"[ERREUR] Impossible d'initialiser le repository local : {ex.Message}");
                 }
                 return;
@@ -333,12 +355,15 @@ namespace EmilsWork.EmilsCMS
                 var load = ouvrages.GetAllOuvrages();
                 if (!load.IsSuccess)
                 {
+                    Logger.Error(load.Error?.TechnicalMessage ?? string.Empty);
                     Console.WriteLine($"[ERREUR] {load.Error?.ToUserMessage()}");
                 }
+                Logger.Log($"{ouvrages.Items.Count} ouvrages chargés (MongoDB)");
                 Console.WriteLine($"[OK] {ouvrages.Items.Count} ouvrages chargés (MongoDB)");
             }
             catch (Exception ex)
             {
+                Logger.LogException(ex);
                 Console.WriteLine($"[ERREUR] MongoDB : {ex.Message}");
             }
         }

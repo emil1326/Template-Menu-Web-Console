@@ -50,6 +50,7 @@ namespace EmilsWork.EmilsCMS
                 return;
             }
 
+            Logger.Warn("Invalid menu input.");
             Console.WriteLine("[WARN] Invalid menu input.");
         }
 

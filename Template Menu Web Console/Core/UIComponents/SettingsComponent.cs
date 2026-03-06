@@ -55,10 +55,12 @@ namespace EmilsWork.EmilsCMS
                 if (!string.IsNullOrEmpty(val))
                 {
                     entry.Setter(val);
+                    Logger.Log("Valeur mise à jour.");
                     Console.WriteLine("[OK] Valeur mise à jour.");
                 }
                 else
                 {
+                    Logger.Log("Modification annulée.");
                     Console.WriteLine("[INFO] Modification annulée.");
                 }
                 Console.WriteLine("Appuyez sur Entrée pour revenir aux paramètres...");
@@ -67,6 +69,7 @@ namespace EmilsWork.EmilsCMS
             }
             else
             {
+                Logger.Warn("Entrée invalide dans paramètres");
                 Console.WriteLine("Entrée invalide.");
                 Console.WriteLine("Appuyez sur Entrée pour réessayer...");
                 Console.ReadLine();

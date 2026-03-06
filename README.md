@@ -237,18 +237,27 @@ Add your own fields directly to `AppSettings` — they are persisted and loaded 
 
 No exceptions are thrown for expected failures. Every CRUD method returns a `Result` or `Result<T>`:
 
+Each log or error has a **severity** value (gravity). Use `Globals.LogSeverityThreshold` to suppress console output below a chosen level; lower-severity messages still appear in the log file. Severity numbers are arbitrary (e.g. 1=debug,100=info,500=error,1000=fatal).
+
+All failures are expressed as `AppError` instances (no other exception types are raised for normal flow). Keep [`doc/error-severities.md`](doc/error-severities.md) up to date—it now lists every `AppError` creation with its severity so reviewers can ensure consistent logging gravity.
+
+
 ```csharp
 var result = repo.Add(item);
 
 if (!result.IsSuccess)
 {
-    // Technical detail for logging:
-    Console.WriteLine(result.Error!.TechnicalMessage);
+    // developer logs are written to devlogs.txt automatically when AppError
+    // instances are created; console output is still performed via Logger.
+    Logger.Error(result.Error!.TechnicalMessage);
 
     // User-friendly fallback string (French by default):
     Console.WriteLine(result.Error.ToUserMessage());
 }
 ```
+
+> **Log file**: a running record of `INFO`/`WARN`/`ERROR` messages (with their severity) is kept in `devlogs.txt` next to the executable. The file is ignored by git (`.gitignore`).  When exceptions are logged, their stack traces are truncated to a few lines (see `Logger.DefaultStackTraceLines`).
+
 
 **`ErrorCode` values:**
 

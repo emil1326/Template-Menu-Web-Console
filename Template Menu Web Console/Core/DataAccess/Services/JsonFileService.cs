@@ -36,7 +36,10 @@ namespace EmilsWork.EmilsCMS
             var configValidation = EntityKeyResolver<TEntity>.ValidateConfiguration();
             if (!configValidation.IsSuccess)
             {
-                throw new InvalidOperationException(configValidation.Error?.TechnicalMessage);
+                // propagate configuration failure as AppError
+                throw new AppError(ErrorCode.Configuration,
+                    configValidation.Error?.Message ?? "Invalid entity key configuration.",
+                    configValidation.Error);
             }
         }
 
@@ -75,7 +78,7 @@ namespace EmilsWork.EmilsCMS
             }
             catch (Exception ex)
             {
-                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message));
+                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message, ex));
             }
         }
 
@@ -101,7 +104,7 @@ namespace EmilsWork.EmilsCMS
             }
             catch (Exception ex)
             {
-                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message));
+                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message, ex));
             }
         }
 
@@ -125,7 +128,7 @@ namespace EmilsWork.EmilsCMS
             }
             catch (Exception ex)
             {
-                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message));
+                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message, ex));
             }
         }
 
@@ -157,7 +160,7 @@ namespace EmilsWork.EmilsCMS
             }
             catch (Exception ex)
             {
-                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message));
+                return Result.Failure(new AppError(ErrorCode.DataSource, ex.Message, ex));
             }
         }
 
@@ -189,7 +192,7 @@ namespace EmilsWork.EmilsCMS
             }
             catch (Exception ex)
             {
-                return Result<List<TEntity>>.Failure(new AppError(ErrorCode.DataSource, ex.Message));
+                return Result<List<TEntity>>.Failure(new AppError(ErrorCode.DataSource, ex.Message, ex));
             }
         }
     }

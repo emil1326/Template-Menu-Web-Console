@@ -9,7 +9,8 @@ public class Exemple : UIComponent
 
     public override void ProcessInput()
     {
-        throw new NotImplementedException();
+        // replace standard NotImplementedException with AppError for consistency
+        throw new AppError(ErrorCode.Unknown, "ProcessInput not implemented.");
     }
 
     public override void Render()
