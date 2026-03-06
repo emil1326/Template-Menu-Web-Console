@@ -15,8 +15,16 @@ Le projet suit maintenant ce modele:
 
 - `q`: quitte uniquement depuis le menu principal (Router).
 - `q` dans les autres pages: retour en arriere.
-- `Ctrl+B`: retour force.
+- `Ctrl+B`: retour force vers la page precedente. Si aucun retour possible, message d'avertissement puis retour a la racine de page.
 - `Ctrl+H`: retour accueil (Router).
+
+## Parametres (UX actuelle)
+
+- Les pages de parametres lisent maintenant une ligne complete pour la selection: `10`, `11`, etc. sont supportes.
+- Si la valeur d'un setting est un bool (`true`/`false`), choisir son numero inverse directement la valeur.
+- Les confirmations "Appuyez sur Entree" apres edition ont ete retirees pour rendre le flux plus rapide.
+- Les parametres MongoDB sont exposes dans le scope `Router` (plus dans un menu legacy de `CMSCore`).
+- Les modifications de settings sont persistantes (sauvegarde immediate).
 
 ## Structure
 
@@ -97,3 +105,11 @@ Depuis `Template Menu Web Console/`:
 ```bash
 dotnet build
 ```
+
+## Debug VS Code (F5)
+
+- `F5` utilise un launch `coreclr` en `externalTerminal`.
+- Avant lancement, VS Code execute la task `clean-build-template-menu`:
+  - `dotnet clean`
+  - `dotnet build`
+- Si une session debug est deja active, utiliser `Ctrl+Shift+F5` pour un restart propre.

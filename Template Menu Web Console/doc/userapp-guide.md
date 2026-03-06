@@ -62,6 +62,14 @@ Important rule for UX consistency:
 - Add `s`/`i` only on app root menus.
 - Do not repeat `s`/`i` on every CRUD/search/detail page.
 - Parent apps can still manage descendant settings via scoped aggregation.
+- Infrastructure settings (ex: MongoDB) belong to `Router` scope.
+
+## 3.1) Settings interaction behavior
+
+- Settings page accepts multi-digit selection (`10`, `11`, etc.).
+- Bool settings toggle immediately when selected.
+- Non-bool settings prompt for a new value.
+- There is no blocking confirmation pause after each change.
 
 ## 4) Register apps in Program.cs
 
@@ -96,7 +104,7 @@ This enables:
 
 - Root router page: `q` = quit.
 - Any non-root page: `q` = back.
-- `Ctrl+B` = force back.
+- `Ctrl+B` = back; if unavailable, show warning and replay page root.
 - `Ctrl+H` = home.
 
 ## 7) Data and errors from app pages

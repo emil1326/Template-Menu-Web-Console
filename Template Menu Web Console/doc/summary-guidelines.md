@@ -27,8 +27,15 @@ Use it to review PRs and keep feature changes aligned.
 
 - `q` quits only on top-level router page.
 - `q` in all other pages means "back".
-- `Ctrl+B` always triggers back.
+- `Ctrl+B` tries to go back to previous page.
+- If back is unavailable, the app warns and replays page root (and falls back to home only when no page is registered).
 - `Ctrl+H` always returns to the router home page.
+
+## 4.1) Settings UX invariants
+
+- Settings selection reads full line input: indices above 9 are supported.
+- Bool settings toggle on selection (no extra value prompt).
+- Post-edit confirmation pauses are removed; page refreshes directly.
 
 ## 5) Router responsibilities
 
