@@ -20,7 +20,7 @@ namespace EmilsWork.EmilsCMS
         public const string AppVersion = "1.1";        // Version de l'application
         public const string AppName = "Mongo console app";  // Nom de l'application
         public const string SettingsFile = "settings.json";  // Fichier de configuration
-        public const string Createur = "Emilien Devauchelle et Jonathan Basque"; // Information sur le createur
+        public const string Createur = "Emilien Devauchelle"; // Information sur le createur
         public const string Compagnie = "Emil's works"; // Information de compagnie
         public static readonly string AppDate = GetBuildTime(); // Last build timestamp (computed at runtime)
 

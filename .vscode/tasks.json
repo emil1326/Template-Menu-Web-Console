@@ -1,0 +1,47 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "clean-template-menu",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "clean",
+                "${workspaceFolder}/Template Menu Web Console/Template Menu Web Console.csproj"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build-template-menu",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "${workspaceFolder}/Template Menu Web Console/Template Menu Web Console.csproj"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": [
+                "clean-template-menu"
+            ],
+            "dependsOrder": "sequence"
+        },
+        {
+            "label": "clean-build-template-menu",
+            "type": "shell",
+            "command": "echo",
+            "args": [
+                "clean+build done"
+            ],
+            "dependsOn": [
+                "clean-template-menu",
+                "build-template-menu"
+            ],
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        }
+    ]
+}

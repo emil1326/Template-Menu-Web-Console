@@ -6,11 +6,15 @@ namespace EmilsWork.EmilsCMS
 {
     internal class CMSCore
     {
+        // static reference for cleanup in ExitApp
+        public static CMSCore? Current { get; private set; }
+
         // Optional delegate to call the user-provided main menu
         private Action? userMainMenuAction;
 
         public CMSCore(Action? mainMenuAction = null)
         {
+            Current = this;
             userMainMenuAction = mainMenuAction;
         }
         bool needLoad = true;                   // Flag pour charger les données au démarrage
@@ -29,8 +33,30 @@ namespace EmilsWork.EmilsCMS
         // Le try/catch global permet de redémarrer l'app en cas de crash
         // =================================================================
 
+        // applications registered by the user or router
+        private readonly List<App> childApps = new List<App>();
+
+        public void RegisterChildApp(App app)
+        {
+            if (app == null) throw new ArgumentNullException(nameof(app));
+            childApps.Add(app);
+        }
+
+        private void InitializeApps()
+        {
+            foreach (var a in childApps)
+                a.InitializeTree();
+        }
+
+        private void CleanupApps()
+        {
+            foreach (var a in childApps)
+                a.CleanupTree();
+        }
+
         public void RunApp()
         {
+            InitializeApps();
             try
             {
                 MainMenu();
@@ -117,138 +143,6 @@ namespace EmilsWork.EmilsCMS
             userMainMenuAction = menuAction ?? throw new ArgumentNullException(nameof(menuAction));
         }
 
-        public void ShowInfo()
-        {
-            Helpers.ClearConsole();
-            Console.WriteLine("=== INFORMATIONS ===");
-            Console.WriteLine();
-            Console.WriteLine($"Application : {Globals.AppName}");
-            Console.WriteLine($"Version : {Globals.AppVersion}");
-            Console.WriteLine();
-            Console.WriteLine("Ce template fournit :");
-            Console.WriteLine("- Système de menu navigable");
-            Console.WriteLine("- Sauvegarde/chargement JSON automatique");
-            Console.WriteLine("- Structure modulaire extensible");
-            Console.WriteLine();
-            Console.WriteLine($"Application faite par {Globals.Createur} dans le but de faire une preuve de concept MongoDB");
-            Console.WriteLine();
-            Console.WriteLine("Appuyez sur Entrée pour revenir...");
-            Console.ReadLine();
-            MainMenu();
-        }
-
-        /// <summary>
-        /// Simple settings menu placeholder exposed to user apps.
-        /// </summary>
-        public void SettingsMenu()
-        {
-            // Use the UI component abstraction to show editable settings grouped under a MongoDB category
-            var entries = new List<SettingsComponent.SettingEntry>
-            {
-                // Category header
-                new SettingsComponent.SettingEntry("=== MongoDB Settings ===", () => string.Empty, _ => { }),
-
-                new SettingsComponent.SettingEntry(
-                    "Enabled (true/false)",
-                    () => Globals.Settings.MongoEnabled.ToString(),
-                    v => Globals.Settings.MongoEnabled = bool.TryParse(v, out var b) ? b : Globals.Settings.MongoEnabled
-                ),
-
-                new SettingsComponent.SettingEntry(
-                    "Host",
-                    () => Globals.Settings.MongoHost ?? string.Empty,
-                    v => Globals.Settings.MongoHost = string.IsNullOrWhiteSpace(v) ? null : v
-                ),
-
-                new SettingsComponent.SettingEntry(
-                    "Port",
-                    () => Globals.Settings.MongoPort.ToString(),
-                    v => { if (int.TryParse(v, out var p)) Globals.Settings.MongoPort = p; }
-                ),
-
-                new SettingsComponent.SettingEntry(
-                    "User",
-                    () => Globals.Settings.MongoUser ?? string.Empty,
-                    v => Globals.Settings.MongoUser = string.IsNullOrWhiteSpace(v) ? null : v
-                ),
-
-                new SettingsComponent.SettingEntry(
-                    "Password",
-                    () => Globals.Settings.MongoDbPassword ?? string.Empty,
-                    v => Globals.Settings.MongoDbPassword = string.IsNullOrWhiteSpace(v) ? null : v
-                ),
-
-                new SettingsComponent.SettingEntry(
-                    "Database",
-                    () => Globals.Settings.MongoDatabase ?? string.Empty,
-                    v => Globals.Settings.MongoDatabase = string.IsNullOrWhiteSpace(v) ? null : v
-                ),
-
-                new SettingsComponent.SettingEntry(
-                    "Collection",
-                    () => Globals.Settings.MongoCollection ?? string.Empty,
-                    v => Globals.Settings.MongoCollection = string.IsNullOrWhiteSpace(v) ? null : v
-                ),
-
-                // Test connection action (user enters anything to trigger)
-                new SettingsComponent.SettingEntry(
-                    "[ACTION] Test MongoDB connection (press any key then Enter)",
-                    () => string.Empty,
-                    _ => { TestMongoConnection(); }
-                )
-            };
-
-            var comp = new SettingsComponent(entries, onFinish: () => { SaveSettings(); MainMenu(); });
-            comp.Run();
-        }
-
-        void TestMongoConnection()
-        {
-            Helpers.ClearConsole();
-            Console.WriteLine("=== TEST MONGODB CONNECTION ===");
-            Console.WriteLine();
-
-            if (!Globals.Settings.MongoEnabled)
-            {
-                Console.WriteLine("MongoDB is disabled in settings.");
-                Console.WriteLine("Press Enter to return to settings...");
-                Console.ReadLine();
-                SettingsMenu();
-                return;
-            }
-
-            try
-            {
-                var s = new MongoDBServiceSettings
-                {
-                    AppName = Globals.AppName,
-                    User = Globals.Settings.MongoUser ?? string.Empty,
-                    Host = Globals.Settings.MongoHost ?? string.Empty,
-                    Password = Globals.Settings.MongoDbPassword ?? string.Empty,
-                    DatabaseName = Globals.Settings.MongoDatabase ?? string.Empty,
-                    CollectionName = Globals.Settings.MongoCollection ?? string.Empty
-                };
-
-                // Attempt to create the service and fetch zero or more items as a connectivity test
-                var svc = new MongoDBService<Ouvrage>(s, ConfigureOuvrageBsonMaps);
-                var items = svc.ReadAll();
-                Logger.Log("MongoDB service instantiated successfully.");
-                Console.WriteLine("[OK] MongoDB service instantiated successfully.");
-                Console.WriteLine($"Items fetched: {items.Value?.Count ?? 0}");
-            }
-            catch (Exception ex)
-            {
-                // log full exception details
-                Logger.LogException(ex);
-                Console.WriteLine($"[ERROR] Connection test failed: {ex.Message}");
-            }
-
-            Console.WriteLine();
-            Console.WriteLine("Press Enter to return to settings...");
-            Console.ReadLine();
-            SettingsMenu();
-        }
-
         void LoadSettings()
         {
             try
@@ -261,18 +155,22 @@ namespace EmilsWork.EmilsCMS
                 if (settingsRepo.Items.Count > 0)
                 {
                     Globals.Settings = ApplyDefaults(settingsRepo.GetSettingsOrDefault());
-                    Logger.Log($"Paramètres chargés ({Globals.SettingsFile})", severity:100);
+                    Logger.Log($"Paramètres chargés ({Globals.SettingsFile})", severity: 100);
                 }
                 else
                 {
-                    Logger.Warn("Aucun fichier de paramètres trouvé, utilisation des valeurs par défaut", severity:100);
+                    Logger.Warn("Aucun fichier de paramètres trouvé, utilisation des valeurs par défaut", severity: 100);
                     Globals.Settings = ApplyDefaults(Globals.Settings);
                     SaveSettings();
                 }
             }
             catch (Exception ex)
             {
-                Logger.LogException(ex, severity:1000);
+                throw new AppError(ErrorCode.DataSource,
+                    "Impossible de charger les paramètres",
+                    ex,
+                    userMessage: "Échec du chargement des paramètres",
+                    severity:1000);
             }
         }
 
@@ -295,9 +193,19 @@ namespace EmilsWork.EmilsCMS
             }
             catch (Exception ex)
             {
-                Logger.LogException(ex);
-                Console.WriteLine($"[ERREUR] Impossible de sauvegarder : {ex.Message}");
+                throw new AppError(ErrorCode.DataSource,
+                    "Impossible de sauvegarder les paramètres",
+                    ex,
+                    userMessage: "Échec de la sauvegarde des paramètres");
             }
+        }
+
+        /// <summary>
+        /// Persists current runtime settings to the configured settings store.
+        /// </summary>
+        public void PersistSettings()
+        {
+            SaveSettings();
         }
 
         private static AppSettings ApplyDefaults(AppSettings current)
@@ -311,8 +219,8 @@ namespace EmilsWork.EmilsCMS
         /// </summary>
         void InitializeMongoDBRepository()
         {
-Logger.Log("Chargement depuis MongoDB...");
-                Console.WriteLine("[INFO] Chargement depuis MongoDB...");
+            Logger.Log("Chargement depuis MongoDB...");
+            Console.WriteLine("[INFO] Chargement depuis MongoDB...");
 
             if (string.IsNullOrWhiteSpace(Globals.Settings.MongoDbPassword))
             {
@@ -363,8 +271,10 @@ Logger.Log("Chargement depuis MongoDB...");
             }
             catch (Exception ex)
             {
-                Logger.LogException(ex);
-                Console.WriteLine($"[ERREUR] MongoDB : {ex.Message}");
+                throw new AppError(ErrorCode.DataSource,
+                    "MongoDB initialisation failure",
+                    ex,
+                    userMessage: "Erreur lors de l'initialisation de MongoDB");
             }
         }
 
@@ -397,6 +307,9 @@ Logger.Log("Chargement depuis MongoDB...");
 
         public static void ExitApp()
         {
+            // run any registered cleanup handlers first
+            Current?.CleanupApps();
+
             Helpers.ClearConsole();
             Console.WriteLine("=== FERMETURE ===");
             Console.WriteLine();

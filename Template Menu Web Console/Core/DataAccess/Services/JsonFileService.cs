@@ -182,7 +182,7 @@ namespace EmilsWork.EmilsCMS
 
                     cache = [];
                     lastRefreshUtc = DateTime.UtcNow;
-                    return Result<List<TEntity>>.Success(new List<TEntity>());
+                    return Result<List<TEntity>>.Success([]);
                 }
 
                 string json = File.ReadAllText(Settings.FilePath);

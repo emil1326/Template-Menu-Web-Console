@@ -98,7 +98,7 @@ namespace EmilsWork.EmilsCMS
 
         public void ProcessInput()
         {
-            Console.ReadLine(); // just wait for acknowledgement
+            Helpers.WaitForContinue(string.Empty);
         }
 
         /// <summary>

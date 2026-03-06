@@ -4,13 +4,38 @@ using System.Collections.Generic;
 using EmilsWork.EmilsCMS;
 using static EmilsWork.EmilsCMS.Helpers;
 
-internal class UserApp
+internal class UserApp : App
 {
-    private readonly CMSCore core;
+    private bool showStatistics = true;
+    private bool showHiddenMenu = true;
 
     public UserApp(CMSCore core)
+        : base(core)
     {
-        this.core = core ?? throw new ArgumentNullException(nameof(core));
+    }
+
+    public override string DisplayName => "Ouvrage";
+
+    public override IEnumerable<SettingsComponent.SettingEntry> GetSettingsEntries()
+    {
+        return new List<SettingsComponent.SettingEntry>
+        {
+            new("Afficher statistiques de liste", () => showStatistics.ToString(), v => showStatistics = bool.TryParse(v, out var b) ? b : showStatistics),
+            new("Afficher menu caché", () => showHiddenMenu.ToString(), v => showHiddenMenu = bool.TryParse(v, out var b) ? b : showHiddenMenu)
+        };
+    }
+
+    public override IEnumerable<string> GetInfoLines()
+    {
+        return new List<string>
+        {
+            "Module métier Ouvrages: CRUD + recherche.",
+            "Navigation en sous-pages: Parcourir et Gestion.",
+            $"Config actuelle: stats={showStatistics}, hiddenMenu={showHiddenMenu}.",
+            $"Application: {Globals.AppName} v{Globals.AppVersion}",
+            $"Créateur: {Globals.Createur}",
+            $"Stockage config: {Globals.SettingsFile}"
+        };
     }
     // Public wrapper so the host/core can register and call the user's menu
     // =================================================================
@@ -20,42 +45,48 @@ internal class UserApp
     // Modifiez MenuNames, Chars et Actions pour personnaliser le menu
     // =================================================================
 
-    public void ShowMainMenu()
+    public void ShowOuvragesMenu(bool showError = false)
     {
-        // --- Configuration du menu principal ---
-        // MenuNames : texte affiché pour chaque option
-        // Chars : touche associée à chaque option (en minuscule)
-        // Actions : fonction à exécuter pour chaque option
-        // IMPORTANT : le nombre d'éléments doit correspondre entre les trois listes
+        var page = new MenuPage(
+            title: "=== OUVRAGES ===",
+            description: "Choisissez une section:",
+            options:
+            [
+                new MenuPage.MenuOption('1', "Parcourir / Rechercher", ListAll),
+                new MenuPage.MenuOption('2', "Gérer (Ajouter / Modifier / Supprimer)", ShowManageMenu),
+                showHiddenMenu
+                    ? new MenuPage.MenuOption('h', "Menu caché", HiddenMenu)
+                    : MenuPage.MenuOption.Space(),
+                new MenuPage.MenuOption('s', "Paramètres (scope Ouvrage)", () => ShowScopedSettingsPage(() => ShowOuvragesMenu())),
+                new MenuPage.MenuOption('i', "Informations (scope Ouvrage)", () => ShowScopedInfoPage(() => ShowOuvragesMenu())),
+                MenuPage.MenuOption.Space(),
+                MenuPage.MenuOption.Separator(),
+                new MenuPage.MenuOption('q', "Retour menu principal", () => Core.MainMenu())
+            ]);
 
-        new MenuChar(
+        if (showError)
+        {
+            page.RunWithError();
+            return;
+        }
+
+        page.Run();
+    }
+
+    private void ShowManageMenu()
+    {
+        new MenuPage(
+            title: "=== GESTION OUVRAGES ===",
+            description: "Actions de maintenance:",
+            options:
             [
-                "=== MENU PRINCIPAL ===",
-                "",
-                "1. Lister tous les ouvrages",
-                "2. Ajouter un ouvrage",
-                "3. Modifier un ouvrage",
-                "4. Détruire un item",
-                "",
-                "",
-                "S. Paramètres",
-                "I. Informations",
-                "",
-                "Q. Quitter"
-            ],
-            ['1', '2', '3', '4', 'h', 's', 'i', 'q'],
-            [
-                () => ListAll(),
-                () => CreateOuvrage(),
-                () => ModifyItem(),
-                () => DeleteItem(),
-                () => HiddenMenu(),
-                () => core.SettingsMenu(),
-                () => core.ShowInfo(),
-                () => CMSCore.ExitApp()
-            ],
-            () => { core.MainMenu(true); }
-        ).Run();
+                new MenuPage.MenuOption('1', "Ajouter un ouvrage", CreateOuvrage),
+                new MenuPage.MenuOption('2', "Modifier un ouvrage", ModifyItem),
+                new MenuPage.MenuOption('3', "Supprimer un ouvrage", DeleteItem),
+                MenuPage.MenuOption.Space(),
+                new MenuPage.MenuOption('q', "Retour menu ouvrages", () => ShowOuvragesMenu())
+            ])
+            .Run();
     }
 
     // =================================================================
@@ -69,30 +100,18 @@ internal class UserApp
 
     void ListAll()
     {
-        ClearConsole();
-        Console.WriteLine("=== Rechercher des ouvrages ===");
-        Console.WriteLine();
-        Console.WriteLine("Rechercher à travers les ouvrages de la librairie.");
-        Console.WriteLine();
-
-        // --- Exemple de sous-menu ---
-        new MenuChar(
+        new MenuPage(
+            title: "=== PARCOURIR / RECHERCHER ===",
+            description: "Explorez votre catalogue:",
+            options:
             [
-                "1. Voir tous les items",
-                "2. Rechercher par type",
-                "3. Rechercher par requête personnalisée",
-                "",
-                "Q. Retour"
-            ],
-            ['1', '2', '3', 'q'],
-            [
-                () => { ShowAllItems(); },
-                () => { SearchByType(); },
-                () => { SearchByQuery(); },
-                () => core.MainMenu()
-            ],
-            () => { ListAll(); }
-        ).Run();
+                new MenuPage.MenuOption('1', "Voir tous les items", () => ShowAllItems()),
+                new MenuPage.MenuOption('2', "Filtrer par type", SearchByType),
+                new MenuPage.MenuOption('3', "Recherche personnalisée", SearchByQuery),
+                MenuPage.MenuOption.Space(),
+                new MenuPage.MenuOption('q', "Retour menu ouvrages", () => ShowOuvragesMenu())
+            ])
+            .Run();
     }
 
     void SearchByType()
@@ -103,23 +122,18 @@ internal class UserApp
         Console.WriteLine("Sélectionnez le type d'ouvrage à afficher :");
         Console.WriteLine();
 
-        new MenuChar(
+        new MenuPage(
+            title: "=== RECHERCHE PAR TYPE ===",
+            description: "Choisissez une catégorie:",
+            options:
             [
-                "1. Livres uniquement",
-                "2. Bandes dessinées uniquement",
-                "3. Périodiques uniquement",
-                "",
-                "Q. Retour"
-            ],
-            ['1', '2', '3', 'q'],
-            [
-                () => { ShowItemsByType<Livre>(); },
-                () => { ShowItemsByType<BandeDessine>(); },
-                () => { ShowItemsByType<Periodique>(); },
-                () => ListAll()
-            ],
-            () => { SearchByType(); }
-        ).Run();
+                new MenuPage.MenuOption('1', "Livres", () => ShowItemsByType<Livre>()),
+                new MenuPage.MenuOption('2', "Bandes dessinées", () => ShowItemsByType<BandeDessine>()),
+                new MenuPage.MenuOption('3', "Périodiques", () => ShowItemsByType<Periodique>()),
+                MenuPage.MenuOption.Space(),
+                new MenuPage.MenuOption('q', "Retour recherche", ListAll)
+            ])
+            .Run();
     }
 
     void ShowItemsByType<T>() where T : Ouvrage
@@ -136,7 +150,7 @@ internal class UserApp
         Console.WriteLine($"=== {typeName.ToUpper()} ===");
         Console.WriteLine();
 
-        var items = core.Ouvrages.GetOuvragesByType<T>();
+        var items = Core.Ouvrages.GetOuvragesByType<T>();
 
         if (items.Count == 0)
         {
@@ -172,8 +186,8 @@ internal class UserApp
             }
         }
 
-        Console.WriteLine("Appuyez sur Entrée pour revenir...");
-        Console.ReadLine();
+        if (!WaitForContinue("Appuyez sur Entrée pour revenir..."))
+            return;
         SearchByType();
     }
 
@@ -213,13 +227,13 @@ internal class UserApp
         Console.WriteLine("=== LISTE DES OUVRAGES ===");
         Console.WriteLine();
 
-        List<Ouvrage> allOuvrages = core.Ouvrages.GetOuvragesByQuery(searchQuery);
+        List<Ouvrage> allOuvrages = Core.Ouvrages.GetOuvragesByQuery(searchQuery);
 
         if (allOuvrages.Count == 0)
         {
             Console.WriteLine("Aucun ouvrage enregistré.");
-            Console.WriteLine("Appuyez sur Entrée pour revenir...");
-            Console.ReadLine();
+            if (!WaitForContinue("Appuyez sur Entrée pour revenir..."))
+                return;
         }
         else
         {
@@ -227,16 +241,19 @@ internal class UserApp
             var bds = allOuvrages.OfType<BandeDessine>().ToList();
             var periodiques = allOuvrages.OfType<Periodique>().ToList();
 
-            decimal avgAll = allOuvrages.Count > 0 ? allOuvrages.Average(o => o.Prix) : 0;
-            decimal avgLivres = livres.Count > 0 ? livres.Average(o => o.Prix) : 0;
-            decimal avgBds = bds.Count > 0 ? bds.Average(o => o.Prix) : 0;
-            decimal avgPeriodiques = periodiques.Count > 0 ? periodiques.Average(o => o.Prix) : 0;
+            if (showStatistics)
+            {
+                decimal avgAll = allOuvrages.Count > 0 ? allOuvrages.Average(o => o.Prix) : 0;
+                decimal avgLivres = livres.Count > 0 ? livres.Average(o => o.Prix) : 0;
+                decimal avgBds = bds.Count > 0 ? bds.Average(o => o.Prix) : 0;
+                decimal avgPeriodiques = periodiques.Count > 0 ? periodiques.Average(o => o.Prix) : 0;
 
-            Console.WriteLine($"Prix moyen des ouvrages : {avgAll:C}");
-            Console.WriteLine($"Prix moyen des livres : {avgLivres:C}");
-            Console.WriteLine($"Prix moyen des bandes dessinées : {avgBds:C}");
-            Console.WriteLine($"Prix moyen des périodiques : {avgPeriodiques:C}");
-            Console.WriteLine();
+                Console.WriteLine($"Prix moyen des ouvrages : {avgAll:C}");
+                Console.WriteLine($"Prix moyen des livres : {avgLivres:C}");
+                Console.WriteLine($"Prix moyen des bandes dessinées : {avgBds:C}");
+                Console.WriteLine($"Prix moyen des périodiques : {avgPeriodiques:C}");
+                Console.WriteLine();
+            }
 
             foreach (var o in allOuvrages)
             {
@@ -262,8 +279,8 @@ internal class UserApp
                 }
                 Console.WriteLine();
             }
-            Console.WriteLine("Appuyez sur Entrée pour revenir...");
-            Console.ReadLine();
+            if (!WaitForContinue("Appuyez sur Entrée pour revenir..."))
+                return;
         }
 
         ListAll();
@@ -285,8 +302,8 @@ internal class UserApp
         if (!TryAskUsers("Nombre d'exemplaires disponibles : ", out int dispo))
         {
             Console.WriteLine("Entrée invalide, veuillez réessayer.");
-            Console.WriteLine("Appuyez sur Entrée pour continuer...");
-            Console.ReadLine();
+            if (!WaitForContinue("Appuyez sur Entrée pour continuer..."))
+                return;
             CreateOuvrage();
             return;
         }
@@ -294,29 +311,24 @@ internal class UserApp
         if (!TryAskUsers("Prix de l'ouvrage (en $) : ", out decimal prix))
         {
             Console.WriteLine("Entrée invalide, veuillez réessayer.");
-            Console.WriteLine("Appuyez sur Entrée pour continuer...");
-            Console.ReadLine();
+            if (!WaitForContinue("Appuyez sur Entrée pour continuer..."))
+                return;
             CreateOuvrage();
             return;
         }
 
-        Console.WriteLine();
-        Console.WriteLine("Quel est le type d'ouvrage ?");
-
-        new MenuChar(
+        new MenuPage(
+            title: "=== TYPE D'OUVRAGE ===",
+            description: "Quel type voulez-vous créer ?",
+            options:
             [
-                "1. Ajouter un livre",
-                "2. Ajouter une bande dessinée",
-                "3. Enregistrer un périodique"
-            ],
-            ['1', '2', '3'],
-            [
-                () => { AddSub(new Livre(){ Titre = titre, Dispo = dispo, Prix = prix }); },
-                () => { AddSub(new BandeDessine(){ Titre = titre, Dispo = dispo, Prix = prix }); },
-                () => { AddSub(new Periodique(){ Titre = titre, Dispo = dispo, Prix = prix }); }
-            ],
-            () => { CreateOuvrage(); }
-        ).Run();
+                new MenuPage.MenuOption('1', "Ajouter un livre", () => AddSub(new Livre() { Titre = titre, Dispo = dispo, Prix = prix })),
+                new MenuPage.MenuOption('2', "Ajouter une bande dessinée", () => AddSub(new BandeDessine() { Titre = titre, Dispo = dispo, Prix = prix })),
+                new MenuPage.MenuOption('3', "Enregistrer un périodique", () => AddSub(new Periodique() { Titre = titre, Dispo = dispo, Prix = prix })),
+                MenuPage.MenuOption.Space(),
+                new MenuPage.MenuOption('q', "Retour gestion", ShowManageMenu)
+            ])
+            .Run();
     }
 
     void AddSub(Ouvrage BaseOuvrage)
@@ -353,7 +365,7 @@ internal class UserApp
         }
 
         // Assign Id and store
-        var addResult = core.Ouvrages.AddOuvrage(BaseOuvrage);
+        var addResult = Core.Ouvrages.AddOuvrage(BaseOuvrage);
         if (addResult.IsSuccess)
         {
             Console.WriteLine("Ouvrage ajouté avec succès.");
@@ -362,9 +374,9 @@ internal class UserApp
         {
             Console.WriteLine(addResult.Error?.ToUserMessage() ?? "Erreur lors de l'ajout de l'ouvrage.");
         }
-        Console.WriteLine("Appuyez sur Entrée pour revenir au menu principal...");
-        Console.ReadLine();
-        core.MainMenu();
+        if (!WaitForContinue("Appuyez sur Entrée pour revenir au menu principal..."))
+            return;
+        ShowManageMenu();
     }
 
     #endregion add items
@@ -381,20 +393,20 @@ internal class UserApp
         if (!TryAskUsers("ID de l'ouvrage à modifier : ", out int ouvrageID))
         {
             Console.WriteLine("ID invalide.");
-            Console.WriteLine("Appuyez sur Entrée pour revenir...");
-            Console.ReadLine();
-            core.MainMenu();
+            if (!WaitForContinue("Appuyez sur Entrée pour revenir..."))
+                return;
+            ShowManageMenu();
             return;
         }
 
-        Ouvrage? currOuvrage = core.Ouvrages.GetOuvrageById(ouvrageID);
+        Ouvrage? currOuvrage = Core.Ouvrages.GetOuvrageById(ouvrageID);
 
         if (currOuvrage == null)
         {
             Console.WriteLine("Aucun ouvrage trouvé avec cet ID.");
-            Console.WriteLine("Appuyez sur Entrée pour revenir...");
-            Console.ReadLine();
-            core.MainMenu();
+            if (!WaitForContinue("Appuyez sur Entrée pour revenir..."))
+                return;
+            ShowManageMenu();
         }
         else
         {
@@ -427,18 +439,18 @@ internal class UserApp
                         break;
                 }
                 Console.WriteLine();
-                char input = AskUsers<char>("Sélectionnez le numéro du champ à modifier (ou Q pour quitter) : ", true);
+                char input = AskUsers<char>("Sélectionnez le numéro du champ à modifier (ou Q pour revenir) : ", true);
                 if (input == 'q')
                 {
                     isEditing = false;
-                    var updateResult = core.Ouvrages.UpdateOuvrage(currOuvrage);
+                    var updateResult = Core.Ouvrages.UpdateOuvrage(currOuvrage);
                     if (!updateResult.IsSuccess)
                     {
                         Console.WriteLine(updateResult.Error?.ToUserMessage() ?? "Erreur lors de la mise à jour de l'ouvrage.");
-                        Console.WriteLine("Appuyez sur Entrée pour continuer...");
-                        Console.ReadLine();
+                        if (!WaitForContinue("Appuyez sur Entrée pour continuer..."))
+                            return;
                     }
-                    core.MainMenu();
+                    ShowManageMenu();
                 }
                 else
                 {
@@ -521,20 +533,20 @@ internal class UserApp
         if (!TryAskUsers("ID de l'ouvrage à supprimer : ", out int ouvrageID))
         {
             Console.WriteLine("ID invalide.");
-            Console.WriteLine("Appuyez sur Entrée pour revenir...");
-            Console.ReadLine();
-            core.MainMenu();
+            if (!WaitForContinue("Appuyez sur Entrée pour revenir..."))
+                return;
+            ShowManageMenu();
             return;
         }
 
-        Ouvrage? currOuvrage = core.Ouvrages.GetOuvrageById(ouvrageID);
+        Ouvrage? currOuvrage = Core.Ouvrages.GetOuvrageById(ouvrageID);
 
         if (currOuvrage == null)
         {
             Console.WriteLine("Aucun ouvrage trouvé avec cet ID.");
-            Console.WriteLine("Appuyez sur Entrée pour revenir...");
-            Console.ReadLine();
-            core.MainMenu();
+            if (!WaitForContinue("Appuyez sur Entrée pour revenir..."))
+                return;
+            ShowManageMenu();
         }
         else
         {
@@ -548,7 +560,7 @@ internal class UserApp
 
             if (confirmation == 'o')
             {
-                var removeResult = core.Ouvrages.RemoveOuvrageById(ouvrageID);
+                var removeResult = Core.Ouvrages.RemoveOuvrageById(ouvrageID);
                 Console.WriteLine();
                 if (removeResult.IsSuccess)
                 {
@@ -565,9 +577,9 @@ internal class UserApp
                 Console.WriteLine("Suppression annulée.");
             }
 
-            Console.WriteLine("Appuyez sur Entrée pour revenir...");
-            Console.ReadLine();
-            core.MainMenu();
+            if (!WaitForContinue("Appuyez sur Entrée pour revenir..."))
+                return;
+            ShowManageMenu();
         }
     }
 
@@ -580,8 +592,8 @@ internal class UserApp
         Console.WriteLine();
         Console.WriteLine("Bonjour!");
         Console.WriteLine();
-        Console.WriteLine("Appuyez sur Entrée pour revenir...");
-        Console.ReadLine();
-        core.MainMenu();
+        if (!WaitForContinue("Appuyez sur Entrée pour revenir..."))
+            return;
+        ShowOuvragesMenu();
     }
 }

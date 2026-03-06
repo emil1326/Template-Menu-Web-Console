@@ -1,63 +1,118 @@
-# Creating and Registering a UserApp
+# UserApp Guide (Current Architecture)
 
-This guide explains how to create a new user application (UserApp) and register it with the core.
+This guide explains how to create a new app module and integrate it in the current router/app tree.
 
-1. Create a new class that provides a method to show the main menu. Example file path: `UserApps/MyUserApp.cs`.
+## 1) Mental model
 
-2. Keep the namespace `EmilsWork.EmilsCMS` so it integrates with existing helpers and domain classes.
+- `Router` is the root app.
+- Domain modules (`UserApp`, `TextEditorApp`, etc.) are child apps.
+- Each app can have sub-apps (recursive, unlimited depth).
+- An app is a collection of pages, but settings/info belong to the app itself.
 
-3. The class should accept a `CMSCore` instance in its constructor so it can access core services:
+## 2) App contract
 
-   - `CMSCore.RegisterUserMainMenu(Action)` — register a callback that the core will call to show the user's menu.
-   - `CMSCore.Ouvrages` — access the repository for domain data.
-
-4. Example pattern:
-
-   - Add a method `public void ShowMainMenu()` that builds a `MenuChar` and calls `CMSCore.ProcessMenuInput(menu)`.
-   - In `Program.cs`, instantiate your `CMSCore` then instantiate your `UserApp` and call `app.RegisterUserMainMenu(user.ShowMainMenu)`.
-
-5. Keep domain classes (e.g., `Ouvrage`, `Livre`) in the `EmilsWork.EmilsCMS` namespace so both core and user apps can reference them without changes.
-
-Notes:
-- Prefer registration over reflection — it's explicit and easier to test.
-- User apps should avoid calling `Environment.Exit` directly; use `CMSCore.ExitApp()` when necessary.
-
-## Repository / Service Convention (v2)
-
-The data flow now follows this rule:
-
-1. User defines a data class in `UserApps/Classes` and marks its key property with `[IsId]`.
-2. User chooses an existing service (`JsonFileService<TEntity>`, `MongoDBService<TEntity>`) or creates a new one for another source.
-3. User creates a repository class that inherits `RepositoryBase<TEntity>`.
-4. For basic usage, the repository can be almost empty and still gets default CRUD + sync behavior.
-
-### ID annotation
-
-- Use `[IsId]` on the key property.
-- Composite keys are supported by putting `[IsId(Order = ...)]` on multiple properties.
-- If no `[IsId]` is found, startup/configuration fails fast.
-
-Example:
+Create an app by inheriting from `App`:
 
 ```csharp
-public class Ouvrage
+internal class CatalogApp : App
 {
-      [IsId]
-      public string Id { get; set; } = string.Empty;
-      public string Titre { get; set; } = string.Empty;
+    public CatalogApp(CMSCore core) : base(core) {}
+
+    public override string DisplayName => "Catalog";
+
+    public override IEnumerable<SettingsComponent.SettingEntry> GetSettingsEntries()
+    {
+        return
+        [
+            new("Enable feature X", () => featureX.ToString(), v => featureX = bool.TryParse(v, out var b) ? b : featureX)
+        ];
+    }
+
+    public override IEnumerable<string> GetInfoLines()
+    {
+        return
+        [
+            "Catalog module.",
+            "Owns browse and management pages."
+        ];
+    }
+
+    public void ShowRootMenu()
+    {
+        new MenuPage(
+            title: "=== CATALOG ===",
+            description: "Choose an action:",
+            options:
+            [
+                new MenuPage.MenuOption('1', "Browse", ShowBrowsePage),
+                new MenuPage.MenuOption('2', "Manage", ShowManagePage),
+                new MenuPage.MenuOption('s', "Settings (Catalog scope)", () => ShowScopedSettingsPage(ShowRootMenu)),
+                new MenuPage.MenuOption('i', "Info (Catalog scope)", () => ShowScopedInfoPage(ShowRootMenu)),
+                new MenuPage.MenuOption('q', "Back", () => Core.MainMenu())
+            ])
+            .Run();
+    }
 }
 ```
 
-### Error handling convention
+## 3) Settings/Info placement rule
 
-- Expected failures return `Result` / `Result<T>` with an `AppError`.
-- `AppError` includes a technical message and an optional user message.
-- UI should display `error.ToUserMessage()` when no custom message is provided.
+Important rule for UX consistency:
 
-### Service cache/stale policy
+- Add `s`/`i` only on app root menus.
+- Do not repeat `s`/`i` on every CRUD/search/detail page.
+- Parent apps can still manage descendant settings via scoped aggregation.
 
-- Caching is service-owned (not repository-owned).
-- Repository methods support cache-aware reads and explicit sync:
-   - `GetAll(useCache: true)`
-   - `GetById(id, useCache: false)` to force fresh read
-   - `ReadAllFromDataSource()` / `WriteAllToDataSource()`
+## 4) Register apps in Program.cs
+
+```csharp
+CMSCore app = new();
+
+var userApp = new UserApp(app);
+var textEditorApp = new TextEditorApp(app);
+var router = new Router(app, userApp, textEditorApp);
+
+app.RegisterUserMainMenu(() => router.ShowMainMenu());
+app.RegisterChildApp(router);
+app.RunApp();
+```
+
+## 5) Register child apps inside parent apps
+
+In parent app constructor:
+
+```csharp
+RegisterSubApp(childA);
+RegisterSubApp(childB);
+```
+
+This enables:
+
+- recursive init/cleanup
+- recursive settings aggregation
+- recursive info aggregation
+
+## 6) Navigation rules to respect
+
+- Root router page: `q` = quit.
+- Any non-root page: `q` = back.
+- `Ctrl+B` = force back.
+- `Ctrl+H` = home.
+
+## 7) Data and errors from app pages
+
+Inside app pages:
+
+- Use repositories for data access.
+- Handle failures through `Result` / `Result<T>` and `AppError`.
+- Keep page methods focused on user flow.
+
+## 8) Quick checklist for a new app
+
+- Inherits from `App`.
+- Implements `DisplayName`.
+- Implements `GetSettingsEntries` / `GetInfoLines`.
+- Has one root menu with `s`/`i` actions.
+- Registers child apps if needed.
+- Uses `q` as back on internal pages.
+- Does not duplicate settings/info actions on child pages.

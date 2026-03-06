@@ -32,7 +32,28 @@ namespace EmilsWork.EmilsCMS
 
         public override void ProcessInput()
         {
-            char input = char.ToLower(Console.ReadKey(true).KeyChar);
+            var key = Console.ReadKey(true);
+            if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.H)
+            {
+                Logger.Log("Home shortcut from MenuChar");
+                if (CMSCore.Current != null)
+                {
+                    CMSCore.Current.MainMenu();
+                }
+                return;
+            }
+
+            if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.B)
+            {
+                Logger.Log("Back shortcut from MenuChar");
+                if (!NavigationHistory.TryBack())
+                {
+                    NavigationHistory.BackUnavailableFallback("MenuChar");
+                }
+                return;
+            }
+
+            char input = char.ToLower(key.KeyChar);
             Console.WriteLine();
 
             for (int i = 0; i < Chars.Count; i++)
@@ -52,6 +73,12 @@ namespace EmilsWork.EmilsCMS
 
             Logger.Warn("Invalid menu input.");
             Console.WriteLine("[WARN] Invalid menu input.");
+        }
+
+        public override void Run()
+        {
+            NavigationHistory.Push($"MenuChar:{Title}:{MenuNames.Count}:{Chars.Count}", Run);
+            base.Run();
         }
 
         /// <summary>

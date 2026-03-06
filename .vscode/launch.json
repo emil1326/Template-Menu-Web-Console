@@ -1,13 +1,17 @@
 {
+    "version": "0.2.0",
     "configurations": [
         {
             "name": "C#: Launch Startup Project",
             "type": "coreclr",
             "request": "launch",
+            "preLaunchTask": "clean-build-template-menu",
             "program": "${workspaceFolder}/Template Menu Web Console/bin/Debug/net10.0/Template Menu Web Console.dll",
             "cwd": "${workspaceFolder}/Template Menu Web Console",
             "console": "externalTerminal",
-            "stopAtEntry": false
+            "stopAtEntry": false,
+            "justMyCode": true,
+            "internalConsoleOptions": "neverOpen"
         }
     ]
 }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 
 namespace EmilsWork.EmilsCMS
 {
@@ -82,7 +83,77 @@ namespace EmilsWork.EmilsCMS
             else
                 Console.WriteLine(Question);
 
-            string? text = UseChar ? Console.ReadKey(Erase).KeyChar.ToString() : Console.ReadLine();
+            string? text;
+            if (UseChar)
+            {
+                var key = Console.ReadKey(Erase);
+                if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.H)
+                {
+                    Logger.Log("Home shortcut from AskUsers<char>");
+                    CMSCore.Current?.MainMenu();
+                    return default!;
+                }
+
+                if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.B)
+                {
+                    Logger.Log("Back shortcut from AskUsers<char>");
+                    if (!NavigationHistory.ReplayTop())
+                        NavigationHistory.BackUnavailableFallback("AskUsers<char>");
+                    return default!;
+                }
+
+                text = key.KeyChar.ToString();
+            }
+            else
+            {
+                var sb = new StringBuilder();
+
+                while (true)
+                {
+                    var key = Console.ReadKey(intercept: true);
+
+                    if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.H)
+                    {
+                        Console.WriteLine();
+                        Logger.Log("Home shortcut from AskUsers<string>");
+                        CMSCore.Current?.MainMenu();
+                        return default!;
+                    }
+
+                    if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.B)
+                    {
+                        Console.WriteLine();
+                        Logger.Log("Back shortcut from AskUsers<string>");
+                        if (!NavigationHistory.ReplayTop())
+                            NavigationHistory.BackUnavailableFallback("AskUsers<string>");
+                        return default!;
+                    }
+
+                    if (key.Key == ConsoleKey.Enter)
+                    {
+                        Console.WriteLine();
+                        break;
+                    }
+
+                    if (key.Key == ConsoleKey.Backspace)
+                    {
+                        if (sb.Length > 0)
+                        {
+                            sb.Length--;
+                            Console.Write("\b \b");
+                        }
+                        continue;
+                    }
+
+                    if (!char.IsControl(key.KeyChar))
+                    {
+                        sb.Append(key.KeyChar);
+                        Console.Write(key.KeyChar);
+                    }
+                }
+
+                text = sb.ToString();
+            }
 
             if (text == null)
                 return default!;
@@ -125,6 +196,112 @@ namespace EmilsWork.EmilsCMS
             {
                 // Wrap and preserve original exception (keeps stack trace in InnerException)
                 throw new InvalidCastException("Unsupported return type or invalid input in AskUsers.", e);
+            }
+        }
+
+        /// <summary>
+        /// Waits for Enter so users can read the current screen before continuing.
+        /// Supports global shortcuts Ctrl+B (back) and Ctrl+H (home).
+        /// </summary>
+        /// <param name="message">Optional pause message shown before waiting for input.</param>
+        /// <returns>
+        /// True when Enter was pressed and caller can continue its normal flow.
+        /// False when a navigation shortcut was handled and caller should stop.
+        /// </returns>
+        public static bool WaitForContinue(string message = "Appuyez sur Entrée pour continuer...")
+        {
+            if (!string.IsNullOrWhiteSpace(message))
+            {
+                Console.WriteLine(message);
+            }
+
+            while (true)
+            {
+                var key = Console.ReadKey(intercept: true);
+
+                if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.H)
+                {
+                    Console.WriteLine();
+                    Logger.Log("Home shortcut from WaitForContinue");
+                    CMSCore.Current?.MainMenu();
+                    return false;
+                }
+
+                if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.B)
+                {
+                    Console.WriteLine();
+                    Logger.Log("Back shortcut from WaitForContinue");
+                    if (!NavigationHistory.ReplayTop())
+                        NavigationHistory.BackUnavailableFallback("WaitForContinue");
+                    return false;
+                }
+
+                if (key.Key == ConsoleKey.Enter)
+                {
+                    Console.WriteLine();
+                    return true;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Reads a full input line with shortcut handling (Ctrl+B / Ctrl+H).
+        /// Returns null when a navigation shortcut was handled.
+        /// </summary>
+        public static string? ReadLineWithShortcuts(string prompt = "", bool inline = true)
+        {
+            if (!string.IsNullOrEmpty(prompt))
+            {
+                if (inline)
+                    Console.Write(prompt);
+                else
+                    Console.WriteLine(prompt);
+            }
+
+            var sb = new StringBuilder();
+
+            while (true)
+            {
+                var key = Console.ReadKey(intercept: true);
+
+                if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.H)
+                {
+                    Console.WriteLine();
+                    Logger.Log("Home shortcut from ReadLineWithShortcuts");
+                    CMSCore.Current?.MainMenu();
+                    return null;
+                }
+
+                if ((key.Modifiers & ConsoleModifiers.Control) != 0 && key.Key == ConsoleKey.B)
+                {
+                    Console.WriteLine();
+                    Logger.Log("Back shortcut from ReadLineWithShortcuts");
+                    if (!NavigationHistory.ReplayTop())
+                        NavigationHistory.BackUnavailableFallback("ReadLineWithShortcuts");
+                    return null;
+                }
+
+                if (key.Key == ConsoleKey.Enter)
+                {
+                    Console.WriteLine();
+                    return sb.ToString();
+                }
+
+                if (key.Key == ConsoleKey.Backspace)
+                {
+                    if (sb.Length > 0)
+                    {
+                        sb.Length--;
+                        Console.Write("\b \b");
+                    }
+                    continue;
+                }
+
+                if (!char.IsControl(key.KeyChar))
+                {
+                    sb.Append(key.KeyChar);
+                    Console.Write(key.KeyChar);
+                }
             }
         }
 

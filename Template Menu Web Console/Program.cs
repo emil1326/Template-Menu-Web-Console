@@ -20,7 +20,12 @@ internal class Program
         CMSCore app = new();
 
         var userApp = new UserApp(app);
-        app.RegisterUserMainMenu(() => userApp.ShowMainMenu());
+        var textEditorApp = new TextEditorApp(app);
+        var router = new Router(app, userApp, textEditorApp);
+
+        // register only root app(s); sub-app hierarchy is managed by each App
+        app.RegisterChildApp(router);
+        app.RegisterUserMainMenu(() => router.ShowMainMenu());
 
         app.RunApp();
     }

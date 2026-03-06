@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace EmilsWork.EmilsCMS
 {
@@ -9,16 +10,17 @@ namespace EmilsWork.EmilsCMS
     /// </summary>
     public class SettingsComponent : UIComponent
     {
-        public record SettingEntry(string Label, Func<string> Getter, Action<string> Setter);
+        public record SettingEntry(string Label, Func<string> Getter, Action<string> Setter, bool IsEditable = true);
 
         private readonly List<SettingEntry> entries;
         private readonly Action? onFinish;
+        private List<SettingEntry> editableEntries = new();
 
-        public SettingsComponent(List<SettingEntry> entries, Action? onFinish = null)
+        public SettingsComponent(List<SettingEntry> entries, Action? onFinish = null, string? title = null)
         {
-            this.entries = entries ?? new List<SettingEntry>();
+            this.entries = entries ?? [];
             this.onFinish = onFinish;
-            Title = "=== PARAMETRES ===";
+            Title = string.IsNullOrWhiteSpace(title) ? "=== PARAMETRES ===" : title;
         }
 
         public override void Render()
@@ -27,32 +29,70 @@ namespace EmilsWork.EmilsCMS
             Console.WriteLine(Title);
             Console.WriteLine();
 
-            for (int i = 0; i < entries.Count; i++)
+            editableEntries = entries.Where(x => x.IsEditable).ToList();
+
+            int visibleIndex = 1;
+            foreach (var e in entries)
             {
-                var e = entries[i];
-                Console.WriteLine($"{i + 1}. {e.Label} : {e.Getter()}");
+                if (!e.IsEditable)
+                {
+                    Console.WriteLine(e.Label);
+                    continue;
+                }
+
+                Console.WriteLine($"{visibleIndex}. {e.Label} : {e.Getter()}");
+                visibleIndex++;
             }
 
             Console.WriteLine();
-            Console.WriteLine("Entrez le numéro du champ à modifier, ou Q pour quitter");
+            Console.WriteLine("Entrez le numéro du champ à modifier (ex: 10), puis Entrée. Q pour revenir.");
         }
 
         public override void ProcessInput()
         {
-            char key = char.ToLower(Console.ReadKey(true).KeyChar);
-            Console.WriteLine();
-            if (key == 'q')
+            while (true)
             {
-                onFinish?.Invoke();
-                return;
-            }
+                var input = Helpers.ReadLineWithShortcuts("> ", inline: true);
+                if (input == null)
+                {
+                    return;
+                }
 
-            if (int.TryParse(key.ToString(), out int idx) && idx >= 1 && idx <= entries.Count)
-            {
-                var entry = entries[idx - 1];
-                Console.Write($"Nouvelle valeur pour '{entry.Label}' (vide = annuler) : ");
-                string? val = Console.ReadLine();
-                if (!string.IsNullOrEmpty(val))
+                input = input.Trim();
+                if (string.Equals(input, "q", StringComparison.OrdinalIgnoreCase))
+                {
+                    onFinish?.Invoke();
+                    return;
+                }
+
+                if (!int.TryParse(input, out int idx) || idx < 1 || idx > editableEntries.Count)
+                {
+                    Logger.Warn("Entrée invalide dans paramètres");
+                    Console.WriteLine("Entrée invalide.");
+                    continue;
+                }
+
+                var entry = editableEntries[idx - 1];
+
+                // Bool settings toggle directly when selected (no extra prompt).
+                var currentValue = entry.Getter();
+                if (bool.TryParse(currentValue, out var currentBool))
+                {
+                    var toggled = !currentBool;
+                    entry.Setter(toggled.ToString());
+                    Logger.Log($"Valeur booléenne inversée: {entry.Label}={toggled}");
+                    Console.WriteLine($"[OK] '{entry.Label}' => {toggled}");
+                    Run();
+                    return;
+                }
+
+                var val = Helpers.ReadLineWithShortcuts($"Nouvelle valeur pour '{entry.Label}' (vide = annuler) : ", inline: true);
+                if (val == null)
+                {
+                    return;
+                }
+
+                if (!string.IsNullOrWhiteSpace(val))
                 {
                     entry.Setter(val);
                     Logger.Log("Valeur mise à jour.");
@@ -63,17 +103,8 @@ namespace EmilsWork.EmilsCMS
                     Logger.Log("Modification annulée.");
                     Console.WriteLine("[INFO] Modification annulée.");
                 }
-                Console.WriteLine("Appuyez sur Entrée pour revenir aux paramètres...");
-                Console.ReadLine();
                 Run();
-            }
-            else
-            {
-                Logger.Warn("Entrée invalide dans paramètres");
-                Console.WriteLine("Entrée invalide.");
-                Console.WriteLine("Appuyez sur Entrée pour réessayer...");
-                Console.ReadLine();
-                Run();
+                return;
             }
         }
     }
