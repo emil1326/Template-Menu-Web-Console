@@ -45,6 +45,7 @@ namespace EmilsWork.EmilsCMS
 
         public TimeSpan CacheStaleAfter => Settings.CacheStaleAfter;
         public bool IsCacheStale => DateTime.UtcNow - lastRefreshUtc > Settings.CacheStaleAfter;
+        public IReadOnlyList<TEntity> CachedItems => new List<TEntity>(cache);
 
         public Result<List<TEntity>> ReadAll(bool useCache = true)
         {

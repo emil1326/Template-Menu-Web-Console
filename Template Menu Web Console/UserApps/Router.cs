@@ -11,7 +11,6 @@ internal class Router : App
 {
         private readonly UserApp userApp;
         private readonly TextEditorApp textEditorApp;
-        private bool showBanner = true;
 
         public Router(CMSCore core, UserApp userApp, TextEditorApp textEditorApp)
             : base(core)
@@ -26,67 +25,57 @@ internal class Router : App
 
         public override string DisplayName => "Router";
 
-        public override IEnumerable<SettingsComponent.SettingEntry> GetSettingsEntries()
+        public override IEnumerable<SettingsValues> GetSettingsValues()
         {
-            return new List<SettingsComponent.SettingEntry>
-            {
-                new("Afficher bannière globale", () => showBanner.ToString(), v =>
-                {
-                    showBanner = bool.TryParse(v, out var b) ? b : showBanner;
-                    Core.PersistSettings();
-                }),
+            return
+            [
+                new RouterSettingsValues(),
+                new CoreMongoSettingsValues()
+            ];
+        }
 
-                new("=== MongoDB (Core) ===", () => string.Empty, _ => { }, IsEditable: false),
-
-                new("Mongo activé", () => Globals.Settings.MongoEnabled.ToString(), v =>
+        public override IEnumerable<DisplaySettingsPage> GetDisplaySettingsPages()
+        {
+            return
+            [
+                new DisplaySettingsPage
                 {
-                    Globals.Settings.MongoEnabled = bool.TryParse(v, out var b) ? b : Globals.Settings.MongoEnabled;
-                    Core.PersistSettings();
-                }),
-
-                new("Mongo host", () => Globals.Settings.MongoHost ?? string.Empty, v =>
+                    PageKey = RouterSettingsValues.Key,
+                    Title = "=== Router ===",
+                    Entries =
+                    [
+                        new SettingDisplayEntry
+                        {
+                            FieldKey = nameof(RouterSettingsValues.ShowBanner),
+                            Label = "Afficher bannière globale",
+                            PromptText = "Afficher bannière globale?",
+                            ToggleBooleanDirectly = true
+                        }
+                    ]
+                },
+                new DisplaySettingsPage
                 {
-                    Globals.Settings.MongoHost = string.IsNullOrWhiteSpace(v) ? null : v;
-                    Core.PersistSettings();
-                }),
-
-                new("Mongo port", () => Globals.Settings.MongoPort.ToString(), v =>
-                {
-                    if (int.TryParse(v, out var p))
-                    {
-                        Globals.Settings.MongoPort = p;
-                        Core.PersistSettings();
-                    }
-                }),
-
-                new("Mongo user", () => Globals.Settings.MongoUser ?? string.Empty, v =>
-                {
-                    Globals.Settings.MongoUser = string.IsNullOrWhiteSpace(v) ? null : v;
-                    Core.PersistSettings();
-                }),
-
-                new("Mongo password", () => Globals.Settings.MongoDbPassword ?? string.Empty, v =>
-                {
-                    Globals.Settings.MongoDbPassword = string.IsNullOrWhiteSpace(v) ? null : v;
-                    Core.PersistSettings();
-                }),
-
-                new("Mongo database", () => Globals.Settings.MongoDatabase ?? string.Empty, v =>
-                {
-                    Globals.Settings.MongoDatabase = string.IsNullOrWhiteSpace(v) ? null : v;
-                    Core.PersistSettings();
-                }),
-
-                new("Mongo collection", () => Globals.Settings.MongoCollection ?? string.Empty, v =>
-                {
-                    Globals.Settings.MongoCollection = string.IsNullOrWhiteSpace(v) ? null : v;
-                    Core.PersistSettings();
-                })
-            };
+                    PageKey = CoreMongoSettingsValues.Key,
+                    Title = "=== MongoDB (Core) ===",
+                    Entries =
+                    [
+                        new SettingDisplayEntry { FieldKey = nameof(CoreMongoSettingsValues.MongoEnabled), Label = "Mongo activé", PromptText = "Mongo activé?", ToggleBooleanDirectly = true },
+                        new SettingDisplayEntry { FieldKey = nameof(CoreMongoSettingsValues.MongoHost), Label = "Mongo host", PromptText = "Mongo host" },
+                        new SettingDisplayEntry { FieldKey = nameof(CoreMongoSettingsValues.MongoPort), Label = "Mongo port", PromptText = "Mongo port" },
+                        new SettingDisplayEntry { FieldKey = nameof(CoreMongoSettingsValues.MongoUser), Label = "Mongo user", PromptText = "Mongo user" },
+                        new SettingDisplayEntry { FieldKey = nameof(CoreMongoSettingsValues.MongoDbPassword), Label = "Mongo password", PromptText = "Mongo password" },
+                        new SettingDisplayEntry { FieldKey = nameof(CoreMongoSettingsValues.MongoDatabase), Label = "Mongo database", PromptText = "Mongo database" },
+                        new SettingDisplayEntry { FieldKey = nameof(CoreMongoSettingsValues.MongoCollection), Label = "Mongo collection", PromptText = "Mongo collection" }
+                    ]
+                }
+            ];
         }
 
         public override IEnumerable<string> GetInfoLines()
         {
+            var routerSettings = SettingsComponent.GetOrCreatePage<RouterSettingsValues>(Globals.GlobalSettings);
+            var mongo = SettingsComponent.GetOrCreatePage<CoreMongoSettingsValues>(Globals.GlobalSettings);
+
             return new List<string>
             {
                 "Router principal de l'application.",
@@ -97,8 +86,9 @@ internal class Router : App
                 $"Créateur: {Globals.Createur}",
                 $"Dernier build: {Globals.AppDate}",
                 $"Fichier settings: {Globals.SettingsFile}",
-                $"Mongo activé: {Globals.Settings.MongoEnabled}",
-                $"Mongo cible: {Globals.Settings.MongoHost ?? "(vide)"}:{Globals.Settings.MongoPort} / {Globals.Settings.MongoDatabase ?? "(vide)"}.{Globals.Settings.MongoCollection ?? "(vide)"}"
+                $"Bannière globale: {routerSettings.ShowBanner}",
+                $"Mongo activé: {mongo.MongoEnabled}",
+                $"Mongo cible: {mongo.MongoHost ?? "(vide)"}:{mongo.MongoPort} / {mongo.MongoDatabase ?? "(vide)"}.{mongo.MongoCollection ?? "(vide)"}"
             };
         }
 
@@ -112,7 +102,8 @@ internal class Router : App
                 description: "Sélectionnez un module:",
                 onRenderPrefix: () =>
                 {
-                    if (showBanner)
+                    var routerSettings = SettingsComponent.GetOrCreatePage<RouterSettingsValues>(Globals.GlobalSettings);
+                    if (routerSettings.ShowBanner)
                     {
                         Console.WriteLine(Globals.AppHeader);
                         Console.WriteLine($"=== {Globals.AppName} v{Globals.AppVersion} ===");
@@ -139,4 +130,11 @@ internal class Router : App
             page.Run();
         }
 
+}
+
+internal sealed class RouterSettingsValues : SettingsValues
+{
+    public const string Key = "router.main";
+    public override string PageKey => Key;
+    public bool ShowBanner { get; set; } = true;
 }

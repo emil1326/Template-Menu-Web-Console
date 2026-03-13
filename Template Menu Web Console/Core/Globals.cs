@@ -15,7 +15,7 @@ namespace EmilsWork.EmilsCMS
         // =================================================================
 
         public const bool noCrashMode = true; // Si true, l'application redémarrera automatiquement après une exception non gérée au lieu de fermer.
-        public static AppSettings Settings = new();
+        public static CompiledSettings GlobalSettings = new();
         // infos
         public const string AppVersion = "1.1";        // Version de l'application
         public const string AppName = "Mongo console app";  // Nom de l'application

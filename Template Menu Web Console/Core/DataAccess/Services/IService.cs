@@ -15,6 +15,9 @@ namespace EmilsWork.EmilsCMS
         /// <summary>Gets a value indicating whether the in-memory cache has exceeded <see cref="CacheStaleAfter"/>.</summary>
         bool IsCacheStale { get; }
 
+        /// <summary>Gets a snapshot of the current in-memory cache without triggering any data source operation.</summary>
+        IReadOnlyList<TEntity> CachedItems { get; }
+
         /// <summary>
         /// Reads all entities, optionally returning the cached copy.
         /// </summary>

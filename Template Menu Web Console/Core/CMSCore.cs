@@ -22,7 +22,6 @@ namespace EmilsWork.EmilsCMS
 
         // Global data
         RepositoryOuvrages ouvrages = null!; // Liste des ouvrages
-        SettingsRepository? settingsRepo;
 
         // Expose repository to user apps
         public RepositoryOuvrages Ouvrages => ouvrages;
@@ -147,22 +146,8 @@ namespace EmilsWork.EmilsCMS
         {
             try
             {
-                // Use a simple JsonFileService + SettingsRepository so settings persistence is centralized
-                var svc = new JsonFileService<AppSettings>(new JsonFileServiceSettings { FilePath = Globals.SettingsFile });
-                settingsRepo = new SettingsRepository(svc);
-                settingsRepo.GetAll();
-
-                if (settingsRepo.Items.Count > 0)
-                {
-                    Globals.Settings = ApplyDefaults(settingsRepo.GetSettingsOrDefault());
-                    Logger.Log($"Paramètres chargés ({Globals.SettingsFile})", severity: 100);
-                }
-                else
-                {
-                    Logger.Warn("Aucun fichier de paramètres trouvé, utilisation des valeurs par défaut", severity: 100);
-                    Globals.Settings = ApplyDefaults(Globals.Settings);
-                    SaveSettings();
-                }
+                Globals.GlobalSettings = SettingsComponent.LoadCompiledSettings(Globals.SettingsFile);
+                Logger.Log($"Paramètres compilés chargés ({Globals.SettingsFile})", severity: 100);
             }
             catch (Exception ex)
             {
@@ -178,16 +163,7 @@ namespace EmilsWork.EmilsCMS
         {
             try
             {
-                Globals.Settings = ApplyDefaults(Globals.Settings);
-
-                // Ensure repository exists
-                if (settingsRepo == null)
-                {
-                    var svc = new JsonFileService<AppSettings>(new JsonFileServiceSettings { FilePath = Globals.SettingsFile });
-                    settingsRepo = new SettingsRepository(svc);
-                }
-
-                settingsRepo.SaveSingle(Globals.Settings);
+                SettingsComponent.SaveCompiledSettings(Globals.SettingsFile, Globals.GlobalSettings);
                 Logger.Log($"Paramètres sauvegardés ({Globals.SettingsFile})");
                 Console.WriteLine($"[OK] Paramètres sauvegardés ({Globals.SettingsFile})");
             }
@@ -208,12 +184,6 @@ namespace EmilsWork.EmilsCMS
             SaveSettings();
         }
 
-        private static AppSettings ApplyDefaults(AppSettings current)
-        {
-            current ??= new AppSettings();
-            return current;
-        }
-
         /// <summary>
         /// Initialise le repository via IService<Ouvrage> (MongoDB par défaut)
         /// </summary>
@@ -222,7 +192,9 @@ namespace EmilsWork.EmilsCMS
             Logger.Log("Chargement depuis MongoDB...");
             Console.WriteLine("[INFO] Chargement depuis MongoDB...");
 
-            if (string.IsNullOrWhiteSpace(Globals.Settings.MongoDbPassword))
+            var mongoSettings = SettingsComponent.GetOrCreatePage<CoreMongoSettingsValues>(Globals.GlobalSettings);
+
+            if (string.IsNullOrWhiteSpace(mongoSettings.MongoDbPassword))
             {
                 Logger.Warn("MongoDB non configuré - utilisation du stockage local (JSON)");
                 try
@@ -249,11 +221,11 @@ namespace EmilsWork.EmilsCMS
             MongoDBServiceSettings settingsService = new()
             {
                 AppName = Globals.AppName,
-                User = Globals.Settings.MongoUser ?? string.Empty,
-                Host = Globals.Settings.MongoHost ?? string.Empty,
-                Password = Globals.Settings.MongoDbPassword ?? "Empty",
-                DatabaseName = Globals.Settings.MongoDatabase ?? "BibliothequeDB",
-                CollectionName = Globals.Settings.MongoCollection ?? "Ouvrages",
+                User = mongoSettings.MongoUser ?? string.Empty,
+                Host = mongoSettings.MongoHost ?? string.Empty,
+                Password = mongoSettings.MongoDbPassword ?? "Empty",
+                DatabaseName = mongoSettings.MongoDatabase ?? "BibliothequeDB",
+                CollectionName = mongoSettings.MongoCollection ?? "Ouvrages",
             };
 
             try
@@ -307,6 +279,15 @@ namespace EmilsWork.EmilsCMS
 
         public static void ExitApp()
         {
+            try
+            {
+                Current?.PersistSettings();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Impossible de persister les paramètres à la fermeture: {ex.Message}");
+            }
+
             // run any registered cleanup handlers first
             Current?.CleanupApps();
 

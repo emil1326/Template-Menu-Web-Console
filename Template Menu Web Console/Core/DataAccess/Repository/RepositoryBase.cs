@@ -37,8 +37,8 @@ namespace EmilsWork.EmilsCMS
         }
 
         /// <inheritdoc/>
-        /// <remarks>Reads directly from the service cache on every access; no local copy is maintained.</remarks>
-        public IReadOnlyList<TEntity> Items => service.ReadAll(useCache: true).Value ?? [];
+        /// <remarks>Reads directly from the in-memory service cache without triggering any data source operation.</remarks>
+        public IReadOnlyList<TEntity> Items => service.CachedItems;
 
         /// <inheritdoc/>
         public virtual Result<List<TEntity>> GetAll(bool useCache = true)

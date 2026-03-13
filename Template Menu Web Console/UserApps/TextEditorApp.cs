@@ -4,9 +4,6 @@ using EmilsWork.EmilsCMS;
 
 internal class TextEditorApp : App
 {
-    private bool showLineNumbers = true;
-    private int tabSize = 4;
-
     public override string DisplayName => "TextEditor";
 
     public TextEditorApp(CMSCore core)
@@ -14,22 +11,51 @@ internal class TextEditorApp : App
     {
     }
 
-    public override IEnumerable<SettingsComponent.SettingEntry> GetSettingsEntries()
+    public override IEnumerable<SettingsValues> GetSettingsValues()
     {
-        return new List<SettingsComponent.SettingEntry>
-        {
-            new("Afficher les numéros de ligne", () => showLineNumbers.ToString(), v => showLineNumbers = bool.TryParse(v, out var b) ? b : showLineNumbers),
-            new("Taille de tabulation", () => tabSize.ToString(), v => tabSize = int.TryParse(v, out var i) ? i : tabSize)
-        };
+        return
+        [
+            new TextEditorSettingsValues()
+        ];
+    }
+
+    public override IEnumerable<DisplaySettingsPage> GetDisplaySettingsPages()
+    {
+        return
+        [
+            new DisplaySettingsPage
+            {
+                PageKey = TextEditorSettingsValues.Key,
+                Title = "=== TextEditor ===",
+                Entries =
+                [
+                    new SettingDisplayEntry
+                    {
+                        FieldKey = nameof(TextEditorSettingsValues.ShowLineNumbers),
+                        Label = "Afficher les numéros de ligne",
+                        PromptText = "Afficher les numéros de ligne?",
+                        ToggleBooleanDirectly = true
+                    },
+                    new SettingDisplayEntry
+                    {
+                        FieldKey = nameof(TextEditorSettingsValues.TabSize),
+                        Label = "Taille de tabulation",
+                        PromptText = "Taille de tabulation"
+                    }
+                ]
+            }
+        ];
     }
 
     public override IEnumerable<string> GetInfoLines()
     {
+        var settings = SettingsComponent.GetOrCreatePage<TextEditorSettingsValues>(Globals.GlobalSettings);
+
         return new List<string>
         {
             "Module texte en préparation.",
             "Objectif: notes/édition rapide dans le terminal.",
-            $"Config actuelle: line numbers={showLineNumbers}, tabSize={tabSize}.",
+            $"Config actuelle: line numbers={settings.ShowLineNumbers}, tabSize={settings.TabSize}.",
             $"Application: {Globals.AppName} v{Globals.AppVersion}",
             $"Compagnie: {Globals.Compagnie}"
         };
@@ -48,4 +74,12 @@ internal class TextEditorApp : App
             return;
         onBack();
     }
+}
+
+internal sealed class TextEditorSettingsValues : SettingsValues
+{
+    public const string Key = "userapp.texteditor";
+    public override string PageKey => Key;
+    public bool ShowLineNumbers { get; set; } = true;
+    public int TabSize { get; set; } = 4;
 }

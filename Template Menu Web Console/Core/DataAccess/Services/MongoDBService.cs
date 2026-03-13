@@ -49,7 +49,9 @@ namespace EmilsWork.EmilsCMS
             }
 
             var connectionString = $"mongodb+srv://{settings.User}:{settings.Password}@{settings.Host}/?appName={settings.AppName}";
-            var client = new MongoClient(connectionString);
+            var clientSettings = MongoClientSettings.FromConnectionString(connectionString);
+            clientSettings.ServerSelectionTimeout = settings.ServerSelectionTimeout;
+            var client = new MongoClient(clientSettings);
             var database = client.GetDatabase(settings.DatabaseName);
             collection = database.GetCollection<TEntity>(settings.CollectionName);
         }
@@ -70,6 +72,7 @@ namespace EmilsWork.EmilsCMS
 
         public TimeSpan CacheStaleAfter => Settings.CacheStaleAfter;
         public bool IsCacheStale => DateTime.UtcNow - lastRefreshUtc > Settings.CacheStaleAfter;
+        public IReadOnlyList<TEntity> CachedItems => new List<TEntity>(cache);
 
         public Result<List<TEntity>> ReadAll(bool useCache = true)
         {
@@ -291,5 +294,8 @@ namespace EmilsWork.EmilsCMS
 
         /// <summary>Gets or sets how long the in-memory cache is considered fresh before a re-read is triggered. Defaults to 30 seconds.</summary>
         public TimeSpan CacheStaleAfter { get; set; } = TimeSpan.FromSeconds(30);
+
+        /// <summary>Gets or sets how long MongoDB driver waits to select a reachable server before timing out. Defaults to 10 seconds.</summary>
+        public TimeSpan ServerSelectionTimeout { get; set; } = TimeSpan.FromSeconds(10);
     }
 }

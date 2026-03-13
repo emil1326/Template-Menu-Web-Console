@@ -6,9 +6,6 @@ using static EmilsWork.EmilsCMS.Helpers;
 
 internal class UserApp : App
 {
-    private bool showStatistics = true;
-    private bool showHiddenMenu = true;
-
     public UserApp(CMSCore core)
         : base(core)
     {
@@ -16,26 +13,56 @@ internal class UserApp : App
 
     public override string DisplayName => "Ouvrage";
 
-    public override IEnumerable<SettingsComponent.SettingEntry> GetSettingsEntries()
+    public override IEnumerable<SettingsValues> GetSettingsValues()
     {
-        return new List<SettingsComponent.SettingEntry>
-        {
-            new("Afficher statistiques de liste", () => showStatistics.ToString(), v => showStatistics = bool.TryParse(v, out var b) ? b : showStatistics),
-            new("Afficher menu caché", () => showHiddenMenu.ToString(), v => showHiddenMenu = bool.TryParse(v, out var b) ? b : showHiddenMenu)
-        };
+        return
+        [
+            new UserAppSettingsValues()
+        ];
+    }
+
+    public override IEnumerable<DisplaySettingsPage> GetDisplaySettingsPages()
+    {
+        return
+        [
+            new DisplaySettingsPage
+            {
+                PageKey = UserAppSettingsValues.Key,
+                Title = "=== Ouvrage ===",
+                Entries =
+                [
+                    new SettingDisplayEntry
+                    {
+                        FieldKey = nameof(UserAppSettingsValues.ShowStatistics),
+                        Label = "Afficher statistiques de liste",
+                        PromptText = "Afficher statistiques de liste?",
+                        ToggleBooleanDirectly = true
+                    },
+                    new SettingDisplayEntry
+                    {
+                        FieldKey = nameof(UserAppSettingsValues.ShowHiddenMenu),
+                        Label = "Afficher menu caché",
+                        PromptText = "Afficher menu caché?",
+                        ToggleBooleanDirectly = true
+                    }
+                ]
+            }
+        ];
     }
 
     public override IEnumerable<string> GetInfoLines()
     {
-        return new List<string>
-        {
+        var settings = SettingsComponent.GetOrCreatePage<UserAppSettingsValues>(Globals.GlobalSettings);
+
+        return
+        [
             "Module métier Ouvrages: CRUD + recherche.",
             "Navigation en sous-pages: Parcourir et Gestion.",
-            $"Config actuelle: stats={showStatistics}, hiddenMenu={showHiddenMenu}.",
+            $"Config actuelle: stats={settings.ShowStatistics}, hiddenMenu={settings.ShowHiddenMenu}.",
             $"Application: {Globals.AppName} v{Globals.AppVersion}",
             $"Créateur: {Globals.Createur}",
             $"Stockage config: {Globals.SettingsFile}"
-        };
+        ];
     }
     // Public wrapper so the host/core can register and call the user's menu
     // =================================================================
@@ -47,6 +74,8 @@ internal class UserApp : App
 
     public void ShowOuvragesMenu(bool showError = false)
     {
+        var settings = SettingsComponent.GetOrCreatePage<UserAppSettingsValues>(Globals.GlobalSettings);
+
         var page = new MenuPage(
             title: "=== OUVRAGES ===",
             description: "Choisissez une section:",
@@ -54,7 +83,7 @@ internal class UserApp : App
             [
                 new MenuPage.MenuOption('1', "Parcourir / Rechercher", ListAll),
                 new MenuPage.MenuOption('2', "Gérer (Ajouter / Modifier / Supprimer)", ShowManageMenu),
-                showHiddenMenu
+                settings.ShowHiddenMenu
                     ? new MenuPage.MenuOption('h', "Menu caché", HiddenMenu)
                     : MenuPage.MenuOption.Space(),
                 new MenuPage.MenuOption('s', "Paramètres (scope Ouvrage)", () => ShowScopedSettingsPage(() => ShowOuvragesMenu())),
@@ -223,6 +252,8 @@ internal class UserApp : App
 
     void ShowAllItems(string searchQuery = "")
     {
+        var settings = SettingsComponent.GetOrCreatePage<UserAppSettingsValues>(Globals.GlobalSettings);
+
         ClearConsole();
         Console.WriteLine("=== LISTE DES OUVRAGES ===");
         Console.WriteLine();
@@ -241,7 +272,7 @@ internal class UserApp : App
             var bds = allOuvrages.OfType<BandeDessine>().ToList();
             var periodiques = allOuvrages.OfType<Periodique>().ToList();
 
-            if (showStatistics)
+            if (settings.ShowStatistics)
             {
                 decimal avgAll = allOuvrages.Count > 0 ? allOuvrages.Average(o => o.Prix) : 0;
                 decimal avgLivres = livres.Count > 0 ? livres.Average(o => o.Prix) : 0;
@@ -596,4 +627,12 @@ internal class UserApp : App
             return;
         ShowOuvragesMenu();
     }
+}
+
+internal sealed class UserAppSettingsValues : SettingsValues
+{
+    public const string Key = "userapp.ouvrages";
+    public override string PageKey => Key;
+    public bool ShowStatistics { get; set; } = true;
+    public bool ShowHiddenMenu { get; set; } = true;
 }

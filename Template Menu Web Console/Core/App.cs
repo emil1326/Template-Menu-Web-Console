@@ -10,7 +10,7 @@ namespace EmilsWork.EmilsCMS
     /// </summary>
     internal abstract class App
     {
-        private readonly List<App> childApps = new();
+        private readonly List<App> childApps = [];
 
         /// <summary>
         /// Human-friendly app/module name used in router settings and info screens.
@@ -58,11 +58,19 @@ namespace EmilsWork.EmilsCMS
         public virtual void Cleanup() { }
 
         /// <summary>
-        /// Optional settings entries exposed to the shared router settings page.
+        /// Optional settings value pages declared by this app.
         /// </summary>
-        public virtual IEnumerable<SettingsComponent.SettingEntry> GetSettingsEntries()
+        public virtual IEnumerable<SettingsValues> GetSettingsValues()
         {
-            return new List<SettingsComponent.SettingEntry>();
+            return [];
+        }
+
+        /// <summary>
+        /// Optional settings display pages declared by this app.
+        /// </summary>
+        public virtual IEnumerable<DisplaySettingsPage> GetDisplaySettingsPages()
+        {
+            return [];
         }
 
         /// <summary>
@@ -70,7 +78,7 @@ namespace EmilsWork.EmilsCMS
         /// </summary>
         public virtual IEnumerable<string> GetInfoLines()
         {
-            return new List<string>();
+            return [];
         }
 
         /// <summary>
@@ -94,6 +102,7 @@ namespace EmilsWork.EmilsCMS
 
         internal void InitializeTree()
         {
+            RegisterSettingsPages(this);
             Initialize();
             foreach (var child in childApps)
             {
@@ -123,7 +132,11 @@ namespace EmilsWork.EmilsCMS
                 AddSettingsSection(entries, app, depth);
             }
 
-            var page = new SettingsComponent(entries, onFinish: onBack, title: title);
+            var page = new SettingsComponent(entries, onFinish: () =>
+            {
+                Core.PersistSettings();
+                onBack();
+            }, title: title);
             page.Run();
         }
 
@@ -167,17 +180,41 @@ namespace EmilsWork.EmilsCMS
             string indent = new string(' ', depth * 2);
             entries.Add(new SettingsComponent.SettingEntry($"{indent}-> {app.DisplayName}", () => string.Empty, _ => { }, IsEditable: false));
 
-            var appSettings = app.GetSettingsEntries().ToList();
-            if (appSettings.Count == 0)
+            RegisterSettingsPages(app);
+
+            var displayPages = app.GetDisplaySettingsPages().ToList();
+            if (displayPages.Count == 0)
             {
                 entries.Add(new SettingsComponent.SettingEntry($"{indent}   (aucun paramètre)", () => string.Empty, _ => { }, IsEditable: false));
             }
             else
             {
-                entries.AddRange(appSettings);
+                foreach (var display in displayPages)
+                {
+                    var pageEntries = SettingsComponent.BuildEntriesForPage(Globals.GlobalSettings, display.PageKey, () => { });
+                    if (pageEntries.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    entries.AddRange(pageEntries);
+                }
             }
 
             entries.Add(new SettingsComponent.SettingEntry(string.Empty, () => string.Empty, _ => { }, IsEditable: false));
+        }
+
+        private static void RegisterSettingsPages(App app)
+        {
+            foreach (var values in app.GetSettingsValues())
+            {
+                SettingsComponent.RegisterPageDefaults(Globals.GlobalSettings, values);
+            }
+
+            foreach (var display in app.GetDisplaySettingsPages())
+            {
+                SettingsComponent.RegisterDisplayDefaults(Globals.GlobalSettings, display);
+            }
         }
     }
 }
