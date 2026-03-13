@@ -9,17 +9,17 @@ using EmilsWork.EmilsCMS;
 /// </summary>
 internal class Router : App
 {
-        private readonly UserApp userApp;
+        private readonly OuvragesApp OuvragesApp;
         private readonly TextEditorApp textEditorApp;
 
-        public Router(CMSCore core, UserApp userApp, TextEditorApp textEditorApp)
+        public Router(CMSCore core, OuvragesApp OuvragesApp, TextEditorApp textEditorApp)
             : base(core)
         {
-            this.userApp = userApp ?? throw new ArgumentNullException(nameof(userApp));
+            this.OuvragesApp = OuvragesApp ?? throw new ArgumentNullException(nameof(OuvragesApp));
             this.textEditorApp = textEditorApp ?? throw new ArgumentNullException(nameof(textEditorApp));
 
             // Router owns module apps; this enables recursive app hierarchy.
-            RegisterSubApp(this.userApp);
+            RegisterSubApp(this.OuvragesApp);
             RegisterSubApp(this.textEditorApp);
         }
 
@@ -112,7 +112,7 @@ internal class Router : App
                 },
                 options:
                 [
-                    new MenuPage.MenuOption('1', "Ouvrages (exemple métier)", () => userApp.ShowOuvragesMenu()),
+                    new MenuPage.MenuOption('1', "Ouvrages (exemple métier)", () => OuvragesApp.ShowOuvragesMenu()),
                     new MenuPage.MenuOption('2', "Editeur de texte (bientôt)", () => textEditorApp.ShowPlaceholder(() => ShowMainMenu())),
                     MenuPage.MenuOption.Space(),
                     MenuPage.MenuOption.Separator(),

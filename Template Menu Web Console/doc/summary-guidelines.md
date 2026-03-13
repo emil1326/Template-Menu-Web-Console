@@ -60,7 +60,7 @@ Use it to review PRs and keep feature changes aligned.
 When behavior changes, update all of these files together:
 
 - `README.md`
-- `doc/userapp-guide.md`
+- `doc/OuvragesApp-guide.md`
 - `doc/summary-guidelines.md`
 - `doc/error-guidelines.md`
 - `doc/data-access-architecture.md` (if data flow contracts changed)

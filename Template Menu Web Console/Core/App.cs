@@ -177,7 +177,7 @@ namespace EmilsWork.EmilsCMS
 
         private static void AddSettingsSection(List<SettingsComponent.SettingEntry> entries, App app, int depth)
         {
-            string indent = new string(' ', depth * 2);
+            string indent = new(' ', depth * 2);
             entries.Add(new SettingsComponent.SettingEntry($"{indent}-> {app.DisplayName}", () => string.Empty, _ => { }, IsEditable: false));
 
             RegisterSettingsPages(app);

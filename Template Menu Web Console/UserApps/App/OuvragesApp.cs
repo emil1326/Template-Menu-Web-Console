@@ -4,12 +4,10 @@ using System.Collections.Generic;
 using EmilsWork.EmilsCMS;
 using static EmilsWork.EmilsCMS.Helpers;
 
-internal class UserApp : App
+internal class OuvragesApp(CMSCore core) : App(core)
 {
-    public UserApp(CMSCore core)
-        : base(core)
-    {
-    }
+
+    #region constructor and overrides
 
     public override string DisplayName => "Ouvrage";
 
@@ -64,6 +62,9 @@ internal class UserApp : App
             $"Stockage config: {Globals.SettingsFile}"
         ];
     }
+
+    #endregion constructor and overrides
+
     // Public wrapper so the host/core can register and call the user's menu
     // =================================================================
     // MENU PRINCIPAL
@@ -631,7 +632,7 @@ internal class UserApp : App
 
 internal sealed class UserAppSettingsValues : SettingsValues
 {
-    public const string Key = "userapp.ouvrages";
+    public const string Key = "OuvragesApp.ouvrages";
     public override string PageKey => Key;
     public bool ShowStatistics { get; set; } = true;
     public bool ShowHiddenMenu { get; set; } = true;

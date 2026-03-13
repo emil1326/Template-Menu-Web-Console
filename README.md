@@ -7,7 +7,7 @@ Template de console .NET 10 avec architecture modulaire `App`/`Page`, navigation
 Le projet suit maintenant ce modele:
 
 - Un `Router` racine (app principale).
-- Des apps enfants (ex: `UserApp`, `TextEditorApp`) en hierarchie recursive illimitee.
+- Des apps enfants (ex: `OuvragesApp`, `TextEditorApp`) en hierarchie recursive illimitee.
 - Chaque app expose ses `Settings` et `Info` au niveau racine de l'app (pas sur chaque page).
 - Les pages internes d'une app servent uniquement au flux metier (CRUD, recherche, etc.).
 
@@ -46,12 +46,12 @@ Template Menu Web Console/
 |  \- Identity/
 |- UserApps/
 |  |- Router.cs
-|  |- App/UserApp.cs
+|  |- App/OuvragesApp.cs
 |  |- TextEditorApp.cs
 |  |- Classes/
 |  \- Repository/
 \- doc/
-   |- userapp-guide.md
+   |- OuvragesApp-guide.md
    |- data-access-architecture.md
    |- error-guidelines.md
    \- summary-guidelines.md
@@ -63,9 +63,9 @@ Template Menu Web Console/
 
 ```csharp
 CMSCore app = new();
-var userApp = new UserApp(app);
+var OuvragesApp = new OuvragesApp(app);
 var textEditorApp = new TextEditorApp(app);
-var router = new Router(app, userApp, textEditorApp);
+var router = new Router(app, OuvragesApp, textEditorApp);
 
 app.RegisterUserMainMenu(() => router.ShowMainMenu());
 app.RegisterChildApp(router);

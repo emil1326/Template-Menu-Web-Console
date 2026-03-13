@@ -2,14 +2,9 @@ using System;
 using System.Collections.Generic;
 using EmilsWork.EmilsCMS;
 
-internal class TextEditorApp : App
+internal class TextEditorApp(CMSCore core) : App(core)
 {
     public override string DisplayName => "TextEditor";
-
-    public TextEditorApp(CMSCore core)
-        : base(core)
-    {
-    }
 
     public override IEnumerable<SettingsValues> GetSettingsValues()
     {
@@ -78,7 +73,7 @@ internal class TextEditorApp : App
 
 internal sealed class TextEditorSettingsValues : SettingsValues
 {
-    public const string Key = "userapp.texteditor";
+    public const string Key = "OuvragesApp.texteditor";
     public override string PageKey => Key;
     public bool ShowLineNumbers { get; set; } = true;
     public int TabSize { get; set; } = 4;

@@ -19,9 +19,9 @@ internal class Program
     {
         CMSCore app = new();
 
-        var userApp = new UserApp(app);
+        var OuvragesApp = new OuvragesApp(app);
         var textEditorApp = new TextEditorApp(app);
-        var router = new Router(app, userApp, textEditorApp);
+        var router = new Router(app, OuvragesApp, textEditorApp);
 
         // register only root app(s); sub-app hierarchy is managed by each App
         app.RegisterChildApp(router);

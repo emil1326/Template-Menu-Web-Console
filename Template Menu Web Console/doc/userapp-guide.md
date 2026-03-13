@@ -1,11 +1,11 @@
-# UserApp Guide (Current Architecture)
+# OuvragesApp Guide (Current Architecture)
 
 This guide explains how to create a new app module and integrate it in the current router/app tree.
 
 ## 1) Mental model
 
 - `Router` is the root app.
-- Domain modules (`UserApp`, `TextEditorApp`, etc.) are child apps.
+- Domain modules (`OuvragesApp`, `TextEditorApp`, etc.) are child apps.
 - Each app can have sub-apps (recursive, unlimited depth).
 - An app is a collection of pages, but settings/info belong to the app itself.
 
@@ -76,9 +76,9 @@ Important rule for UX consistency:
 ```csharp
 CMSCore app = new();
 
-var userApp = new UserApp(app);
+var OuvragesApp = new OuvragesApp(app);
 var textEditorApp = new TextEditorApp(app);
-var router = new Router(app, userApp, textEditorApp);
+var router = new Router(app, OuvragesApp, textEditorApp);
 
 app.RegisterUserMainMenu(() => router.ShowMainMenu());
 app.RegisterChildApp(router);
